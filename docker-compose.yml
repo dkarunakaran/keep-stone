@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  keep-stone:
+    build: .
+    ports:
+      - "2222:2222"
+    volumes:
+      - ./db:/app/instance
+    environment:
+      - FLASK_ENV=production
+      - SECRET_KEY=your-super-secret-key-change-this-in-production
+    restart: unless-stopped

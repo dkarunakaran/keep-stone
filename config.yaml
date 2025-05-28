@@ -1,0 +1,10 @@
+maintainer: Dhanoop Karunakaran
+debug: False
+sql_alchemy:
+  loc: '/app/instance'
+  db: 'data.db'
+type: 
+  - 'token'
+  - 'issue'
+  - 'document'
+  - 'other'

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Add New Artifact - Artifact Manager{% endblock %}
+
+{% block content %}
+<h1 class="page-title">
+    <i class="fas fa-plus text-primary me-3"></i>Add New Artifact
+</h1>
+
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow-lg border-0">
+            <div class="card-body p-4">
+                <form method="POST">
+                    <div class="mb-4">
+                        <label for="name" class="form-label fw-semibold">
+                            <i class="fas fa-tag me-2 text-primary"></i>Artifact Name
+                        </label>
+                        <input type="text" class="form-control" id="name" name="name" required
+                               placeholder="e.g., GitHub API Token, AWS Access Key">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="used_for" class="form-label fw-semibold">
+                            <i class="fas fa-info-circle me-2 text-primary"></i>Used For
+                        </label>
+                        <textarea class="form-control" id="used_for" name="used_for" rows="3" required
+                                placeholder="e.g., Accessing GitHub repositories, AWS S3 operations"></textarea>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="expiry_date" class="form-label fw-semibold">
+                            <i class="fas fa-calendar me-2 text-primary"></i>Expiry Date
+                        </label>
+                        <input type="date" class="form-control" id="expiry_date" name="expiry_date" required>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('index') }}" class="btn btn-secondary me-md-2">
+                            <i class="fas fa-arrow-left me-2"></i>Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Add Artifact
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="alert alert-info">
+            <i class="fas fa-lightbulb me-2"></i>
+            <strong>Tip:</strong> Choose meaningful names and descriptions for your Artifact to easily identify them later. 
+            Set realistic expiry dates and regularly review your Artifact for security.
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Set minimum date to today
+    document.getElementById('expiry_date').min = new Date().toISOString().split('T')[0];
+</script>
+{% endblock %}

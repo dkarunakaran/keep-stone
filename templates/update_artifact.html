@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h2 class="card-title mb-4">Update Token</h2>
+                    
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Token Name</label>
+                            <input type="text" class="form-control" id="name" name="name" 
+                                   value="{{ artifact.name }}" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="used_for" class="form-label">Used For</label>
+                            <textarea class="form-control" id="used_for" name="used_for" 
+                                      rows="3" required>{{ artifact.used_for }}</textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="expiry_date" class="form-label">Expiry Date</label>
+                            <input type="date" class="form-control" id="expiry_date" 
+                                   name="expiry_date" value="{{ artifact.expiry_date }}" required>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Update Token</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
