@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, Date, DateTime
 from .base import Base
-import datetime
+from datetime import datetime, date
 
 class Artifact(Base):
     __tablename__ = 'artifact'
@@ -8,5 +8,8 @@ class Artifact(Base):
     name = Column(String, nullable=False)
     used_for = Column(String, nullable=False)
     type_id = Column(Integer, ForeignKey('type.id'))
-    expiry_date = Column(Date, nullable=False)
-    created_at = Column(DateTime, nullable=False, default=datetime.datetime.utcnow())
+    expiry_date = Column(Date, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow())
+
+    def is_expired(self):
+        return self.expiry_date < date.today()

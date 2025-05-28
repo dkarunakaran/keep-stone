@@ -19,6 +19,18 @@
                         <input type="text" class="form-control" id="name" name="name" required
                                placeholder="e.g., GitHub API Token, AWS Access Key">
                     </div>
+
+                    <div class="mb-4">
+                        <label for="token_type" class="form-label fw-semibold">
+                            <i class="fas fa-key me-2 text-primary"></i>Artifact Type
+                        </label>
+                        <select class="form-select" id="artifact_type" name="artifact_type" required>
+                            <option value="" selected disabled>Select an artifact type</option>
+                            {% for type in types %}
+                            <option value="{{ type.id }}">{{ type.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
                     
                     <div class="mb-4">
                         <label for="used_for" class="form-label fw-semibold">

@@ -54,18 +54,21 @@
                 <div class="token-card {{ card_class }} p-4">
                     <div class="d-flex justify-content-between align-items-start mb-3">
                         <h5 class="card-title text-dark fw-bold mb-0">
-                            <i class="fas fa-book text-primary me-2"></i>{{ artifact.name }}
+                            <i class="fas fa-book text-primary me-2"></i>
+                            {{ artifact.name[:config['trim']['name']] }}{% if artifact.name|length > config['trim']['name'] %}...{% endif %}
                         </h5>
                         <span class="badge {{ status_badge }}">
                             <i class="{{ status_icon }} me-1"></i>{{ status_text }}
                         </span>
-                    </div>
-                    
+                        <span class="badge bg-info">
+                            <i class="fas fa-flter me-1"></i>{{ types_dict[artifact.type_id] }}
+                        </span>
+                    </div>       
                     <div class="mb-3">
                         <small class="text-muted d-block mb-1">
                             <i class="fas fa-info-circle me-1"></i>Used For:
                         </small>
-                        <p class="text-dark mb-0">{{ artifact.used_for }}</p>
+                        <p class="text-dark mb-0">{{ artifact.used_for[:config['trim']['used_for']] }}{% if artifact.used_for|length > config['trim']['used_for'] %}...{% endif %}</p>
                     </div>
                     
                     <div class="mb-3">
