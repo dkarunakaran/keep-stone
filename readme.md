@@ -1,6 +1,6 @@
 # KeepStone
 
-A modern, responsive web application for managing artifacts and their expiry dates. Built with Flask, SQLAlchemy, and SQLite with a beautiful Bootstrap UI.
+A modern, responsive web application for storing artifacts related to token and expiry dates, troubleshooting info, and other information. Built with Flask, SQLAlchemy, and SQLite with a beautiful Bootstrap UI.
 
 ## Features
 
@@ -56,11 +56,6 @@ The application automatically categorizes artifacts:
 - **Active**: More than 14 days until expiry
 - **Expires Soon**: 14 days or less until expiry  
 - **Expired**: Past the expiry date
-
-## API Endpoints
-
-The application also provides a REST API:
-- `GET /api/artifacts` - Returns all artifacts in JSON format
 
 ## Database
 
