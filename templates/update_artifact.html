@@ -14,6 +14,20 @@
                             <input type="text" class="form-control" id="name" name="name" 
                                    value="{{ artifact.name }}" required>
                         </div>
+
+                        <div class="mb-3">
+                            <label for="artifact_type" class="form-label">
+                                <i class="fas fa-key me-2 text-primary"></i>Artifact Type
+                            </label>
+                            <select class="form-select" id="artifact_type" name="artifact_type" required>
+                                <option value="" disabled>Select an artifact type</option>
+                                {% for type in types %}
+                                <option value="{{ type.id }}" {% if type.id == artifact.type_id %}selected{% endif %}>
+                                    {{ type.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
                         
                         <div class="mb-3">
                             <label for="used_for" class="form-label">Used For</label>

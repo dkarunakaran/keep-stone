@@ -8,3 +8,7 @@ type:
   - 'issue'
   - 'document'
   - 'other'
+
+trim:
+  name: 10
+  used_for: 30
