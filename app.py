@@ -5,7 +5,8 @@ import os
 import utility
 import yaml
 from sqlalchemy.orm import sessionmaker
-
+import base64
+from werkzeug.utils import secure_filename
 import sys
 parent_dir = ".."
 sys.path.append(parent_dir)
@@ -40,43 +41,66 @@ def inject_date():
 @app.route('/')
 def index():
     search_query = request.args.get('search', '')
-    if search_query:
-        # Search in name
-        name_results = session.query(Artifact).filter(
-            Artifact.name.ilike(f'%{search_query}%')
-        )
-        
-        # Search in used_for
-        used_for_results = session.query(Artifact).filter(
-            Artifact.used_for.ilike(f'%{search_query}%')
-        )
-        
-        # Combine results using union and order them
-        artifacts = name_results.union(used_for_results).order_by(Artifact.expiry_date.asc()).all()
-    else:
-        artifacts = session.query(Artifact).order_by(Artifact.expiry_date.asc()).all()
+    type_filter = request.args.get('type', '')
     
+    # Start with base query
+    query = session.query(Artifact)
+    
+    # Apply search filter if present
+    if search_query:
+        name_results = query.filter(Artifact.name.ilike(f'%{search_query}%'))
+        content_results = query.filter(Artifact.content.ilike(f'%{search_query}%'))
+        query = name_results.union(content_results)
+    
+    # Apply type filter if present
+    if type_filter:
+        query = query.filter(Artifact.type_id == type_filter)
+    
+    # Get final results
+    artifacts = query.order_by(Artifact.expiry_date.asc()).all()
+    
+    # Get types for dropdown
     types = session.query(Type).all()
     types_dict = {t.id: t.name for t in types}
     
-    return render_template('index.html', artifacts=artifacts, search_query=search_query, today=date.today(), types_dict=types_dict, config=config)
+    return render_template('index.html', 
+                         artifacts=artifacts,
+                         search_query=search_query,
+                         type_filter=type_filter,
+                         today=date.today(),
+                         types=types,
+                         types_dict=types_dict,
+                         config=config)
 
 @app.route('/add', methods=['GET', 'POST'])
 def add_artifact():
     if request.method == 'POST':
         name = request.form['name']
         type_id = request.form['artifact_type']
-        used_for = request.form['used_for']
+        content = request.form['content']
         expiry_date_str = request.form['expiry_date']
         
         try:
             expiry_date = datetime.strptime(expiry_date_str, '%Y-%m-%d').date()
             
+            # Handle image upload
+            image = request.files.get('image')
+            image_data = None
+            image_name = None
+            
+            if image and image.filename:
+                # Secure the filename
+                image_name = secure_filename(image.filename)
+                # Read and encode image to base64
+                image_data = base64.b64encode(image.read())
+            
             artifact = Artifact(
                 name=name,
-                used_for=used_for,
+                content=content,
                 expiry_date=expiry_date,
-                type_id=type_id  
+                type_id=type_id,
+                image=image_data,
+                image_name=image_name
             )
             
             session.add(artifact)
@@ -87,10 +111,11 @@ def add_artifact():
             
         except ValueError:
             flash('Invalid date format. Please use YYYY-MM-DD.', 'error')
+        except Exception as e:
+            flash(f'Error uploading image: {str(e)}', 'error')
 
     # Fetch types from database
     types = session.query(Type).all()
-
     return render_template('add_artifact.html', types=types)
 
 @app.route('/delete/<int:artifact_id>', methods=['POST'])
@@ -107,29 +132,74 @@ def update_artifact(artifact_id):
     if request.method == 'POST':
         try:
             artifact.name = request.form['name']
-            artifact.used_for = request.form['used_for']
+            artifact.content = request.form['content']
             artifact.type_id = request.form['artifact_type']
             expiry_date = datetime.strptime(request.form['expiry_date'], '%Y-%m-%d').date()
             artifact.expiry_date = expiry_date
+
+            # Handle image update
+            remove_image = request.form.get('remove_image')
+            new_image = request.files.get('image')
+
+            if remove_image:
+                # Remove existing image
+                artifact.image = None
+                artifact.image_name = None
+            elif new_image and new_image.filename:
+                # Update with new image
+                image_name = secure_filename(new_image.filename)
+                image_data = base64.b64encode(new_image.read())
+                artifact.image = image_data
+                artifact.image_name = image_name
+
             session.commit()
             flash('Artifact updated successfully!', 'success')
             return redirect(url_for('index'))
             
         except ValueError:
             flash('Invalid date format. Please use YYYY-MM-DD.', 'error')
+        except Exception as e:
+            flash(f'Error updating artifact: {str(e)}', 'error')
 
     # Fetch types from database
     types = session.query(Type).all()
             
     return render_template('update_artifact.html', artifact=artifact, types=types)
 
-'''
-@app.route('/api/artifacts')
-def api_artifacts():
-    artifacts = Artifact.query.all()
-    return jsonify([artifact.to_dict() for artifact in artifacts])'''
+@app.route('/artifact/<int:artifact_id>')
+def artifact_detail(artifact_id):
+    artifact = session.query(Artifact).filter(Artifact.id==artifact_id).first()
+    if not artifact:
+        flash('Artifact not found!', 'error')
+        return redirect(url_for('index'))
+    
+    # Get type name
+    type_obj = session.query(Type).filter(Type.id==artifact.type_id).first()
+    type_name = type_obj.name if type_obj else 'Unknown'
+    
+    # Calculate status
+    days_until_expiry = (artifact.expiry_date - date.today()).days
+    if artifact.is_expired():
+        status_badge = "bg-danger"
+        status_text = "Expired"
+        status_icon = "fas fa-times-circle"
+    elif days_until_expiry <= 14:
+        status_badge = "bg-warning text-dark"
+        status_text = "Expires Soon"
+        status_icon = "fas fa-exclamation-triangle"
+    else:
+        status_badge = "bg-success"
+        status_text = "Active"
+        status_icon = "fas fa-check-circle"
+    
+    return render_template('artifact_detail.html', 
+                         artifact=artifact,
+                         type_name=type_name,
+                         days_until_expiry=days_until_expiry,
+                         status_badge=status_badge,
+                         status_text=status_text,
+                         status_icon=status_icon)
 
-# Add after existing routes, before if __name__ == '__main__':
-
+# All routes are defined above. The following runs the app if executed directly.
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=2222, debug=True)

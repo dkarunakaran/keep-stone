@@ -8,7 +8,7 @@
                 <div class="card-body">
                     <h2 class="card-title mb-4">Update Token</h2>
                     
-                    <form method="POST">
+                    <form method="POST" enctype="multipart/form-data">
                         <div class="mb-3">
                             <label for="name" class="form-label">Token Name</label>
                             <input type="text" class="form-control" id="name" name="name" 
@@ -30,15 +30,42 @@
                         </div>
                         
                         <div class="mb-3">
-                            <label for="used_for" class="form-label">Used For</label>
-                            <textarea class="form-control" id="used_for" name="used_for" 
-                                      rows="3" required>{{ artifact.used_for }}</textarea>
+                            <label for="content" class="form-label">Content</label>
+                            <textarea class="form-control" id="content" name="content" 
+                                      rows="3" required>{{ artifact.content }}</textarea>
                         </div>
                         
                         <div class="mb-3">
                             <label for="expiry_date" class="form-label">Expiry Date</label>
                             <input type="date" class="form-control" id="expiry_date" 
                                    name="expiry_date" value="{{ artifact.expiry_date }}" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="image" class="form-label">
+                                <i class="fas fa-image me-2 text-primary"></i>Image
+                            </label>
+                            {% if artifact.image %}
+                            <div class="mb-2">
+                                <img src="data:image/jpeg;base64,{{ artifact.image.decode('utf-8') }}" 
+                                     alt="{{ artifact.image_name }}"
+                                     style="max-width: 200px; height: auto;">
+                                <div class="form-check mt-2">
+                                    <input class="form-check-input" type="checkbox" id="remove_image" name="remove_image">
+                                    <label class="form-check-label" for="remove_image">
+                                        Remove existing image
+                                    </label>
+                                </div>
+                            </div>
+                            {% endif %}
+                            <input type="file" class="form-control" id="image" name="image" 
+                                   accept="image/*" onchange="previewImage(event)">
+                            <div id="imagePreview" class="mt-2 d-none">
+                                <img id="preview" src="" alt="Preview" style="max-width: 200px; height: auto;">
+                                <button type="button" class="btn btn-sm btn-danger mt-2" onclick="clearImage()">
+                                    <i class="fas fa-times"></i> Remove
+                                </button>
+                            </div>
                         </div>
                         
                         <div class="d-flex justify-content-between">
@@ -51,4 +78,33 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function previewImage(event) {
+    const preview = document.getElementById('preview');
+    const previewDiv = document.getElementById('imagePreview');
+    const file = event.target.files[0];
+    
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.src = e.target.result;
+            previewDiv.classList.remove('d-none');
+        }
+        reader.readAsDataURL(file);
+    }
+}
+
+function clearImage() {
+    const input = document.getElementById('image');
+    const preview = document.getElementById('preview');
+    const previewDiv = document.getElementById('imagePreview');
+    
+    input.value = '';
+    preview.src = '';
+    previewDiv.classList.add('d-none');
+}
+</script>
 {% endblock %}
