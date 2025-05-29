@@ -4,10 +4,10 @@ sql_alchemy:
   loc: '/app/instance'
   db: 'data.db'
 type: 
-  - 'token'
-  - 'issue'
-  - 'document'
-  - 'other'
+  - 'Token'
+  - 'Troubleshoot'
+  - 'Information'
+  - 'Other'
 
 trim:
   name: 10
