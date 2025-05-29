@@ -47,7 +47,7 @@ def index():
         )
         
         # Search in used_for
-        used_for_results = Artifact.query.filter(
+        used_for_results = session.query(Artifact).filter(
             Artifact.used_for.ilike(f'%{search_query}%')
         )
         
@@ -58,7 +58,6 @@ def index():
     
     types = session.query(Type).all()
     types_dict = {t.id: t.name for t in types}
-    print(config)
     
     return render_template('index.html', artifacts=artifacts, search_query=search_query, today=date.today(), types_dict=types_dict, config=config)
 
