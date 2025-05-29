@@ -11,4 +11,4 @@ type:
 
 trim:
   name: 10
-  used_for: 30
+  content: 10

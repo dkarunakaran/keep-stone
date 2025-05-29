@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}{{ artifact.name }} - Details{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-12 mb-4">
+            <a href="{{ url_for('index') }}" class="btn btn-outline-primary">
+                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+            </a>
+        </div>
+        
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-4">
+                        <h3 class="card-title mb-0">
+                            <i class="fas fa-book text-primary me-2"></i>
+                            {{ artifact.name }}
+                        </h3>
+                        <div>
+                            <span class="badge {{ status_badge }} me-2">
+                                <i class="{{ status_icon }} me-1"></i>{{ status_text }}
+                            </span>
+                            <span class="badge bg-dark">
+                                {{ type_name }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h5 class="text-muted mb-3">Details</h5>
+                            {% if artifact.image %}
+                            <p>
+                                <strong>Image:</strong><br>
+                                <img src="data:image/jpeg;base64,{{ artifact.image.decode('utf-8') }}" 
+                                    alt="{{ artifact.image_name }}"
+                                    style="max-width: 100%; height: auto;">
+                            </p>
+                            {% endif %}
+                            <p><strong>Content:</strong><br>{{ artifact.content }}</p>
+                            <p><strong>Created:</strong><br>{{ artifact.created_at.strftime('%B %d, %Y') }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h5 class="text-muted mb-3">Expiration</h5>
+                            <p><strong>Expires on:</strong><br>
+                                {{ artifact.expiry_date.strftime('%B %d, %Y') }}
+                                {% if not artifact.is_expired() and days_until_expiry <= 30 %}
+                                    ({{ days_until_expiry }} days remaining)
+                                {% elif artifact.is_expired() %}
+                                    <span class="text-danger">({{ abs(days_until_expiry) }} days overdue)</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end">
+                        <a href="{{ url_for('update_artifact', artifact_id=artifact.id) }}" class="btn btn-primary me-2">
+                            <i class="fas fa-edit me-2"></i>Edit
+                        </a>
+                        <form method="POST" action="{{ url_for('delete_artifact', artifact_id=artifact.id) }}" 
+                              onsubmit="return confirm('Are you sure you want to delete this artifact?')" class="d-inline">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash me-2"></i>Delete
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

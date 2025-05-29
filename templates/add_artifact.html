@@ -11,7 +11,7 @@
     <div class="col-md-8 col-lg-6">
         <div class="card shadow-lg border-0">
             <div class="card-body p-4">
-                <form method="POST">
+                <form method="POST" enctype="multipart/form-data">
                     <div class="mb-4">
                         <label for="name" class="form-label fw-semibold">
                             <i class="fas fa-tag me-2 text-primary"></i>Artifact Name
@@ -33,10 +33,10 @@
                     </div>
                     
                     <div class="mb-4">
-                        <label for="used_for" class="form-label fw-semibold">
-                            <i class="fas fa-info-circle me-2 text-primary"></i>Used For
+                        <label for="content" class="form-label fw-semibold">
+                            <i class="fas fa-info-circle me-2 text-primary"></i>Content
                         </label>
-                        <textarea class="form-control" id="used_for" name="used_for" rows="3" required
+                        <textarea class="form-control" id="content" name="content" rows="3" required
                                 placeholder="e.g., Accessing GitHub repositories, AWS S3 operations"></textarea>
                     </div>
                     
@@ -44,9 +44,23 @@
                         <label for="expiry_date" class="form-label fw-semibold">
                             <i class="fas fa-calendar me-2 text-primary"></i>Expiry Date
                         </label>
-                        <input type="date" class="form-control" id="expiry_date" name="expiry_date" required>
+                        <input type="date" class="form-control" id="expiry_date" name="expiry_date">
                     </div>
-                    
+
+                    <div class="mb-4">
+                        <label for="image" class="form-label fw-semibold">
+                            <i class="fas fa-image me-2 text-primary"></i>Image (Optional)
+                        </label>
+                        <input type="file" class="form-control" id="image" name="image" 
+                            accept="image/*" onchange="previewImage(event)">
+                        <div id="imagePreview" class="mt-2 d-none">
+                            <img id="preview" src="" alt="Preview" style="max-width: 200px; max-height: 200px;">
+                            <button type="button" class="btn btn-sm btn-danger mt-2" onclick="clearImage()">
+                                <i class="fas fa-times"></i> Remove
+                            </button>
+                        </div>
+                    </div>
+                                    
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                         <a href="{{ url_for('index') }}" class="btn btn-secondary me-md-2">
                             <i class="fas fa-arrow-left me-2"></i>Cancel
@@ -73,8 +87,38 @@
 {% endblock %}
 
 {% block scripts %}
+{{ super() }}
+<script>
+    // ...existing date validation code...
+
+    function previewImage(event) {
+        const preview = document.getElementById('preview');
+        const previewDiv = document.getElementById('imagePreview');
+        const file = event.target.files[0];
+        
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                preview.src = e.target.result;
+                previewDiv.classList.remove('d-none');
+            }
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function clearImage() {
+        const input = document.getElementById('image');
+        const preview = document.getElementById('preview');
+        const previewDiv = document.getElementById('imagePreview');
+        
+        input.value = '';
+        preview.src = '';
+        previewDiv.classList.add('d-none');
+    }
+</script>
 <script>
     // Set minimum date to today
     document.getElementById('expiry_date').min = new Date().toISOString().split('T')[0];
 </script>
 {% endblock %}
+
