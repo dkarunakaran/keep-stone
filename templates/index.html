@@ -3,10 +3,7 @@
 {% block title %}KeepStone - Dashboard{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <!--<h1 class="page-title mb-0">
-        <i class="fas fa-layer-group text-primary me-2"></i>Artifacts
-    </h1>-->
+<div class="d-flex justify-content-end mb-4">
     <a href="{{ url_for('add_artifact') }}" class="btn btn-primary">
         <i class="fas fa-plus me-2"></i>New Artifact
     </a>
@@ -51,14 +48,10 @@
         <i class="fas fa-filter me-2"></i>
         <div class="flex-grow-1">
             {% if search_query %}
-                <span class="badge bg-primary me-2">
-                    Search: "{{ search_query }}"
-                </span>
+                <span class="badge bg-primary me-2">Search: "{{ search_query }}"</span>
             {% endif %}
             {% if type_filter %}
-                <span class="badge bg-primary">
-                    Type: {{ types_dict[type_filter|int] }}
-                </span>
+                <span class="badge bg-primary">Type: {{ types_dict[type_filter|int] }}</span>
             {% endif %}
         </div>
         <a href="{{ url_for('index') }}" class="btn btn-sm btn-light">
@@ -70,69 +63,91 @@
 <div class="row g-3">
     {% if artifacts %}
         {% for artifact in artifacts %}
-            {% set days_until_expiry = (artifact.expiry_date - today).days %}
-            {% if artifact.is_expired() %}
-                {% set card_class = "expired" %}
-                {% set status_badge = "bg-danger" %}
-                {% set status_text = "Expired" %}
-                {% set status_icon = "fas fa-times-circle" %}
-            {% elif days_until_expiry <= 14 %}
-                {% set card_class = "warning" %}
-                {% set status_badge = "bg-warning" %}
-                {% set status_text = "Expires Soon" %}
-                {% set status_icon = "fas fa-exclamation-triangle" %}
-            {% else %}
-                {% set card_class = "active" %}
-                {% set status_badge = "bg-success" %}
-                {% set status_text = "Active" %}
-                {% set status_icon = "fas fa-check-circle" %}
+            {% set unique_id = 'artifact-' ~ artifact.id %}
+            {% set type_name = types_dict[artifact.type_id] %}
+            
+            {# Set card classes and status based on type #}
+            {% if type_name == 'Token' %}
+                {% set days_until_expiry = (artifact.expiry_date - today).days %}
+                {% if artifact.is_expired() %}
+                    {% set card_class = "token-expired" %}
+                    {% set status_badge = "bg-danger" %}
+                    {% set status_text = "Expired" %}
+                    {% set status_icon = "fas fa-times-circle" %}
+                {% elif days_until_expiry <= 14 %}
+                    {% set card_class = "token-warning" %}
+                    {% set status_badge = "bg-warning" %}
+                    {% set status_text = "Expires Soon" %}
+                    {% set status_icon = "fas fa-exclamation-triangle" %}
+                {% else %}
+                    {% set card_class = "token-active" %}
+                    {% set status_badge = "bg-success" %}
+                    {% set status_text = "Active" %}
+                    {% set status_icon = "fas fa-check-circle" %}
+                {% endif %}
+                {% set type_icon = "fas fa-key" %}
+            {% elif type_name == 'Troubleshoot' %}
+                {% set card_class = "troubleshoot-card" %}
+                {% set type_icon = "fas fa-wrench" %}
+            {% elif type_name == 'Information' %}
+                {% set card_class = "information-card" %}
+                {% set type_icon = "fas fa-info-circle" %}
+            {% elif type_name == 'Other' %}
+                {% set card_class = "other-card" %}
+                {% set type_icon = "fas fa-folder" %}
             {% endif %}
 
             <div class="col-sm-6 col-md-4 col-lg-3">
-                <div class="token-card {{ card_class }}">
-                    <a href="{{ url_for('artifact_detail', artifact_id=artifact.id) }}" 
-                       class="text-decoration-none">
-                        <div class="p-3">
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <h6 class="mb-0 fw-semibold text-truncate text-dark" style="max-width: 150px;">
-                                    <i class="fas fa-file-alt text-primary me-2"></i>
-                                    {{ artifact.name }}
-                                </h6>
+                <div id="{{ unique_id }}" class="artifact-card {{ card_class }}" 
+                     onclick="navigateToArtifact(event, '{{ url_for('artifact_detail', artifact_id=artifact.id) }}')">
+                    <div class="p-3">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h6 class="mb-0 fw-semibold text-truncate text-dark" style="max-width: 150px;">
+                                <i class="{{ type_icon }} text-primary me-2"></i>
+                                {{ artifact.name }}
+                            </h6>
+                            {% if type_name == 'Token' %}
                                 <span class="badge {{ status_badge }}">
                                     <i class="{{ status_icon }} me-1"></i>{{ status_text }}
                                 </span>
-                            </div>
+                            {% endif %}
+                        </div>
 
-                            <div class="mb-2">
-                                <span class="badge bg-dark">{{ types_dict[artifact.type_id] }}</span>
-                            </div>
+                        <div class="mb-2">
+                            <span class="badge bg-dark">{{ type_name }}</span>
+                        </div>
 
-                            <p class="text-muted small mb-2" style="height: 3em; overflow: hidden;">
-                                {{ artifact.content[:100] }}{% if artifact.content|length > 100 %}...{% endif %}
-                            </p>
+                        <p class="text-muted small mb-2" style="height: 3em; overflow: hidden;">
+                            {{ artifact.content[:100] }}{% if artifact.content|length > 100 %}...{% endif %}
+                        </p>
 
-                            <div class="d-flex justify-content-between align-items-center">
-                                <small class="text-muted">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                {% if type_name == 'Token' %}
                                     <i class="far fa-calendar me-1"></i>
                                     {{ artifact.expiry_date.strftime('%b %d, %Y') }}
-                                </small>
-                                <div class="btn-group" onclick="event.stopPropagation();">
-                                    <a href="{{ url_for('update_artifact', artifact_id=artifact.id) }}" 
-                                       class="btn btn-icon btn-light" title="Edit">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    <form method="POST" 
-                                          action="{{ url_for('delete_artifact', artifact_id=artifact.id) }}" 
-                                          class="d-inline"
-                                          onsubmit="return confirm('Are you sure you want to delete this artifact?')">
-                                        <button type="submit" class="btn btn-icon btn-light" title="Delete">
-                                            <i class="fas fa-trash text-danger"></i>
-                                        </button>
-                                    </form>
-                                </div>
+                                    {% if days_until_expiry <= 14 and not artifact.is_expired() %}
+                                        <span class="text-warning">({{ days_until_expiry }}d left)</span>
+                                    {% elif artifact.is_expired() %}
+                                        <span class="text-danger">(Expired)</span>
+                                    {% endif %}
+                                {% else %}
+                                    <i class="far fa-clock me-1"></i>
+                                    {{ artifact.created_at.strftime('%b %d, %Y') }}
+                                {% endif %}
+                            </small>
+                            <div class="btn-group action-buttons">
+                                <button type="button" class="btn btn-icon btn-light" title="Edit"
+                                        onclick="handleAction(event, '{{ url_for('update_artifact', artifact_id=artifact.id) }}')">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button type="button" class="btn btn-icon btn-light" title="Delete"
+                                        onclick="handleDelete(event, '{{ url_for('delete_artifact', artifact_id=artifact.id) }}')">
+                                    <i class="fas fa-trash text-danger"></i>
+                                </button>
                             </div>
                         </div>
-                    </a>
+                    </div>
                 </div>
             </div>
         {% endfor %}
@@ -160,29 +175,84 @@
 
 <div class="card bg-light mt-4">
     <div class="card-body">
-        <h6 class="card-title d-flex align-items-center">
-            <i class="fas fa-info-circle text-primary me-2"></i>Status Legend
-        </h6>
-        <div class="row g-3">
-            <div class="col-md-4">
-                <div class="d-flex align-items-center">
-                    <span class="badge bg-success me-2">Active</span>
-                    <small>More than 14 days remaining</small>
+        <div class="row">
+            <div class="col-md-6">
+                <h6 class="card-title d-flex align-items-center mb-3">
+                    <i class="fas fa-key text-primary me-2"></i>Token Status Legend
+                </h6>
+                <div class="row g-2">
+                    <div class="col-md-12">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="badge bg-success me-2">Active</span>
+                            <small>More than 14 days remaining</small>
+                        </div>
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="badge bg-warning me-2">Expires Soon</span>
+                            <small>14 days or less remaining</small>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-danger me-2">Expired</span>
+                            <small>Past expiry date</small>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="col-md-4">
-                <div class="d-flex align-items-center">
-                    <span class="badge bg-warning me-2">Expires Soon</span>
-                    <small>14 days or less remaining</small>
+            <div class="col-md-6">
+                <h6 class="card-title d-flex align-items-center mb-3">
+                    <i class="fas fa-shapes text-primary me-2"></i>Artifact Types
+                </h6>
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="fas fa-key text-primary me-2"></i>
+                            <small>Token</small>
+                        </div>
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="fas fa-wrench text-orange-600 me-2"></i>
+                            <small>Troubleshoot</small>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="fas fa-info-circle text-blue-600 me-2"></i>
+                            <small>Information</small>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-folder text-gray-600 me-2"></i>
+                            <small>Other</small>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="col-md-4">
-                <div class="d-flex align-items-center">
-                    <span class="badge bg-danger me-2">Expired</span>
-                    <small>Past expiry date</small>
-                </div>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+function navigateToArtifact(event, url) {
+    if (!event.target.closest('.action-buttons')) {
+        window.location.href = url;
+    }
+}
+
+function handleAction(event, url) {
+    event.stopPropagation();
+    window.location.href = url;
+}
+
+function handleDelete(event, url) {
+    event.stopPropagation();
+    if (confirm('Are you sure you want to delete this artifact?')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = url;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
 {% endblock %}
