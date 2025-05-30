@@ -90,7 +90,9 @@ def add_artifact():
         expiry_date_str = request.form['expiry_date']
         
         try:
-            expiry_date = datetime.strptime(expiry_date_str, '%Y-%m-%d').date()
+            expiry_date = None
+            if expiry_date_str:
+                expiry_date = datetime.strptime(expiry_date_str, '%Y-%m-%d').date()
             
             # Handle multiple image uploads
             images_data = []
