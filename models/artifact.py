@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Date, DateTime, Text, LargeBinary
+from sqlalchemy import Column, Integer, String, ForeignKey, Date, DateTime, Text, JSON
 from .base import Base
 from datetime import datetime, date
 
@@ -7,8 +7,7 @@ class Artifact(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String, nullable=False)
     content = Column(Text, nullable=False)
-    image = Column(LargeBinary, nullable=True)
-    image_name = Column(String, nullable=True)
+    images = Column(JSON, nullable=True)  # Store array of image objects
     type_id = Column(Integer, ForeignKey('type.id'))
     expiry_date = Column(Date, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow())

@@ -1,27 +1,38 @@
 {% extends "base.html" %}
 
-{% block title %}Add New Artifact - Artifact Manager{% endblock %}
+{% block title %}Add New Artifact - KeepStone{% endblock %}
 
 {% block content %}
-<h1 class="page-title">
-    <i class="fas fa-plus text-primary me-3"></i>Add New Artifact
-</h1>
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('index') }}" class="text-decoration-none">
+                <i class="fas fa-home text-primary me-1"></i>Dashboard
+            </a>
+        </li>
+        <li class="breadcrumb-item active">Add New Artifact</li>
+    </ol>
+</nav>
 
 <div class="row justify-content-center">
     <div class="col-md-8 col-lg-6">
         <div class="card shadow-lg border-0">
             <div class="card-body p-4">
+                <h2 class="card-title mb-4">
+                    <i class="fas fa-plus text-primary me-2"></i>Add New Artifact
+                </h2>
+
                 <form method="POST" enctype="multipart/form-data">
                     <div class="mb-4">
                         <label for="name" class="form-label fw-semibold">
                             <i class="fas fa-tag me-2 text-primary"></i>Artifact Name
                         </label>
-                        <input type="text" class="form-control" id="name" name="name" required
+                        <input type="text" class="form-control search-box" id="name" name="name" required
                                placeholder="e.g., GitHub API Token, AWS Access Key">
                     </div>
 
                     <div class="mb-4">
-                        <label for="token_type" class="form-label fw-semibold">
+                        <label for="artifact_type" class="form-label fw-semibold">
                             <i class="fas fa-key me-2 text-primary"></i>Artifact Type
                         </label>
                         <select class="form-select" id="artifact_type" name="artifact_type" required>
@@ -36,33 +47,43 @@
                         <label for="content" class="form-label fw-semibold">
                             <i class="fas fa-info-circle me-2 text-primary"></i>Content
                         </label>
-                        <textarea class="form-control" id="content" name="content" rows="3" required
-                                placeholder="e.g., Accessing GitHub repositories, AWS S3 operations"></textarea>
+                        <textarea class="form-control" id="content" name="content" required></textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">
+                            <i class="fas fa-images me-2 text-primary"></i>Images (Optional)
+                        </label>
+                        
+                        <!-- Image Upload Card -->
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <i class="fas fa-upload me-2"></i>Add Images
+                            </div>
+                            <div class="card-body">
+                                <div class="dropzone-container mb-3 p-4 border-2 border-dashed rounded-3 text-center">
+                                    <input type="file" class="form-control d-none" id="images" name="images[]" 
+                                           accept="image/*" multiple onchange="previewImages(event)">
+                                    <label for="images" class="mb-0 cursor-pointer">
+                                        <i class="fas fa-cloud-upload-alt fa-2x text-primary mb-2 d-block"></i>
+                                        <p class="mb-0">Drag and drop images here or click to select files</p>
+                                        <small class="text-muted">Supported formats: JPG, PNG, GIF (Max 5MB each)</small>
+                                    </label>
+                                </div>
+                                <div id="imagePreview" class="row g-2"></div>
+                            </div>
+                        </div>
                     </div>
                     
                     <div class="mb-4">
                         <label for="expiry_date" class="form-label fw-semibold">
                             <i class="fas fa-calendar me-2 text-primary"></i>Expiry Date
                         </label>
-                        <input type="date" class="form-control" id="expiry_date" name="expiry_date">
-                    </div>
-
-                    <div class="mb-4">
-                        <label for="image" class="form-label fw-semibold">
-                            <i class="fas fa-image me-2 text-primary"></i>Image (Optional)
-                        </label>
-                        <input type="file" class="form-control" id="image" name="image" 
-                            accept="image/*" onchange="previewImage(event)">
-                        <div id="imagePreview" class="mt-2 d-none">
-                            <img id="preview" src="" alt="Preview" style="max-width: 200px; max-height: 200px;">
-                            <button type="button" class="btn btn-sm btn-danger mt-2" onclick="clearImage()">
-                                <i class="fas fa-times"></i> Remove
-                            </button>
-                        </div>
+                        <input type="date" class="form-control search-box" id="expiry_date" name="expiry_date" required>
                     </div>
                                     
-                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                        <a href="{{ url_for('index') }}" class="btn btn-secondary me-md-2">
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                        <a href="{{ url_for('index') }}" class="btn btn-light me-2">
                             <i class="fas fa-arrow-left me-2"></i>Cancel
                         </a>
                         <button type="submit" class="btn btn-primary">
@@ -77,10 +98,18 @@
 
 <div class="row mt-4">
     <div class="col-12">
-        <div class="alert alert-info">
-            <i class="fas fa-lightbulb me-2"></i>
-            <strong>Tip:</strong> Choose meaningful names and descriptions for your Artifact to easily identify them later. 
-            Set realistic expiry dates and regularly review your Artifact for security.
+        <div class="card bg-light border-0">
+            <div class="card-body">
+                <h6 class="card-title d-flex align-items-center mb-3">
+                    <i class="fas fa-lightbulb text-primary me-2"></i>Tips
+                </h6>
+                <ul class="mb-0 text-muted small">
+                    <li>Choose meaningful names that are easy to identify later</li>
+                    <li>Use markdown in the content field for better formatting</li>
+                    <li>Images should be clear and relevant to the artifact</li>
+                    <li>Set realistic expiry dates and review regularly</li>
+                </ul>
+            </div>
         </div>
     </div>
 </div>
@@ -88,37 +117,151 @@
 
 {% block scripts %}
 {{ super() }}
-<script>
-    // ...existing date validation code...
+<style>
+    .dropzone-container {
+        border: 2px dashed #dee2e6;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    .dropzone-container:hover {
+        border-color: #6366f1;
+        background-color: #f8fafc;
+    }
+    .image-container {
+        overflow: hidden;
+        border-radius: 0.5rem;
+    }
+    .image-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: all 0.3s ease;
+    }
+    .image-container:hover .image-overlay {
+        opacity: 1;
+    }
+</style>
 
-    function previewImage(event) {
-        const preview = document.getElementById('preview');
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.css">
+<script src="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.js"></script>
+<script>
+    // Initialize SimpleMDE
+    var simplemde = new SimpleMDE({ 
+        element: document.getElementById("content"),
+        spellChecker: false,
+        forceSync: true,
+        toolbar: ["bold", "italic", "heading", "|", 
+                 "quote", "unordered-list", "ordered-list", "|",
+                 "link", "image", "table", "|",
+                 "preview", "side-by-side", "fullscreen"],
+    });
+
+    // File management
+    let maxFileSize = 5 * 1024 * 1024; // 5MB
+    let currentFiles = new DataTransfer();
+
+    function previewImages(event) {
         const previewDiv = document.getElementById('imagePreview');
-        const file = event.target.files[0];
+        const files = Array.from(event.target.files).filter(file => {
+            if (file.size > maxFileSize) {
+                alert(`File ${file.name} is too large. Maximum size is 5MB.`);
+                return false;
+            }
+            if (!file.type.startsWith('image/')) {
+                alert(`File ${file.name} is not an image.`);
+                return false;
+            }
+            return true;
+        });
+
+        // Update DataTransfer object with valid files
+        currentFiles = new DataTransfer();
+        files.forEach(file => currentFiles.items.add(file));
+        document.getElementById('images').files = currentFiles.files;
         
-        if (file) {
+        // Clear existing previews
+        previewDiv.innerHTML = '';
+        
+        // Generate previews
+        files.forEach((file, index) => {
             const reader = new FileReader();
+            const previewContainer = document.createElement('div');
+            previewContainer.className = 'col-6 col-md-4 col-lg-3';
+            
             reader.onload = function(e) {
-                preview.src = e.target.result;
-                previewDiv.classList.remove('d-none');
+                previewContainer.innerHTML = `
+                    <div class="position-relative image-container">
+                        <img src="${e.target.result}" class="img-fluid rounded shadow-sm" 
+                             alt="${file.name}" 
+                             style="height: 150px; width: 100%; object-fit: cover;">
+                        <div class="image-overlay">
+                            <button type="button" class="btn btn-sm btn-danger" 
+                                    onclick="removeImage(this, ${index})">
+                                <i class="fas fa-trash me-1"></i>Remove
+                            </button>
+                        </div>
+                    </div>
+                `;
             }
             reader.readAsDataURL(file);
-        }
+            previewDiv.appendChild(previewContainer);
+        });
     }
 
-    function clearImage() {
-        const input = document.getElementById('image');
-        const preview = document.getElementById('preview');
-        const previewDiv = document.getElementById('imagePreview');
+    function removeImage(button, index) {
+        const input = document.getElementById('images');
+        const dt = new DataTransfer();
+        const { files } = input;
         
-        input.value = '';
-        preview.src = '';
-        previewDiv.classList.add('d-none');
+        Array.from(files).forEach((file, i) => {
+            if (i !== index) dt.items.add(file);
+        });
+        
+        input.files = dt.files;
+        const container = button.closest('.col-6');
+        container.style.transition = 'opacity 0.3s ease';
+        container.style.opacity = '0';
+        setTimeout(() => container.remove(), 300);
     }
-</script>
-<script>
+
+    // Drag and drop handling
+    const dropzone = document.querySelector('.dropzone-container');
+    
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropzone.addEventListener(eventName, e => {
+            e.preventDefault();
+            e.stopPropagation();
+        }, false);
+    });
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropzone.addEventListener(eventName, () => {
+            dropzone.style.borderColor = '#6366f1';
+            dropzone.style.backgroundColor = '#f8fafc';
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropzone.addEventListener(eventName, () => {
+            dropzone.style.borderColor = '#dee2e6';
+            dropzone.style.backgroundColor = '';
+        }, false);
+    });
+
+    dropzone.addEventListener('drop', e => {
+        const files = e.dataTransfer.files;
+        document.getElementById('images').files = files;
+        previewImages({ target: { files } });
+    }, false);
+
     // Set minimum date to today
     document.getElementById('expiry_date').min = new Date().toISOString().split('T')[0];
 </script>
 {% endblock %}
-
