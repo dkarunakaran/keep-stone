@@ -7,6 +7,7 @@ import yaml
 from sqlalchemy.orm import sessionmaker
 import base64
 from werkzeug.utils import secure_filename
+from markdown2 import Markdown
 import sys
 parent_dir = ".."
 sys.path.append(parent_dir)
@@ -37,6 +38,14 @@ Type = models.type.Type
 @app.context_processor
 def inject_date():
     return dict(date=date)
+
+
+# Create markdown renderer
+markdowner = Markdown(extras=["tables", "fenced-code-blocks"])
+
+@app.template_filter('markdown')
+def markdown_filter(text):
+    return markdowner.convert(text)
 
 @app.route('/')
 def index():
@@ -83,24 +92,25 @@ def add_artifact():
         try:
             expiry_date = datetime.strptime(expiry_date_str, '%Y-%m-%d').date()
             
-            # Handle image upload
-            image = request.files.get('image')
-            image_data = None
-            image_name = None
-            
-            if image and image.filename:
-                # Secure the filename
-                image_name = secure_filename(image.filename)
-                # Read and encode image to base64
-                image_data = base64.b64encode(image.read())
+            # Handle multiple image uploads
+            images_data = []
+            if 'images[]' in request.files:
+                files = request.files.getlist('images[]')
+                for file in files:
+                    if file and file.filename:
+                        image_name = secure_filename(file.filename)
+                        image_data = base64.b64encode(file.read()).decode('utf-8')
+                        images_data.append({
+                            'name': image_name,
+                            'data': image_data
+                        })
             
             artifact = Artifact(
                 name=name,
                 content=content,
                 expiry_date=expiry_date,
                 type_id=type_id,
-                image=image_data,
-                image_name=image_name
+                images=images_data
             )
             
             session.add(artifact)
@@ -112,9 +122,8 @@ def add_artifact():
         except ValueError:
             flash('Invalid date format. Please use YYYY-MM-DD.', 'error')
         except Exception as e:
-            flash(f'Error uploading image: {str(e)}', 'error')
+            flash(f'Error: {str(e)}', 'error')
 
-    # Fetch types from database
     types = session.query(Type).all()
     return render_template('add_artifact.html', types=types)
 
@@ -137,20 +146,24 @@ def update_artifact(artifact_id):
             expiry_date = datetime.strptime(request.form['expiry_date'], '%Y-%m-%d').date()
             artifact.expiry_date = expiry_date
 
-            # Handle image update
-            remove_image = request.form.get('remove_image')
-            new_image = request.files.get('image')
+            # Handle removed images
+            removed_images = request.form.get('removed_images', '').split(',')
+            if artifact.images:
+                artifact.images = [img for img in artifact.images if img['name'] not in removed_images]
 
-            if remove_image:
-                # Remove existing image
-                artifact.image = None
-                artifact.image_name = None
-            elif new_image and new_image.filename:
-                # Update with new image
-                image_name = secure_filename(new_image.filename)
-                image_data = base64.b64encode(new_image.read())
-                artifact.image = image_data
-                artifact.image_name = image_name
+            # Handle new images
+            if 'images[]' in request.files:
+                files = request.files.getlist('images[]')
+                for file in files:
+                    if file and file.filename:
+                        image_name = secure_filename(file.filename)
+                        image_data = base64.b64encode(file.read()).decode('utf-8')
+                        if not artifact.images:
+                            artifact.images = []
+                        artifact.images.append({
+                            'name': image_name,
+                            'data': image_data
+                        })
 
             session.commit()
             flash('Artifact updated successfully!', 'success')
@@ -161,9 +174,7 @@ def update_artifact(artifact_id):
         except Exception as e:
             flash(f'Error updating artifact: {str(e)}', 'error')
 
-    # Fetch types from database
     types = session.query(Type).all()
-            
     return render_template('update_artifact.html', artifact=artifact, types=types)
 
 @app.route('/artifact/<int:artifact_id>')
