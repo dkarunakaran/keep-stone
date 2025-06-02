@@ -8,7 +8,12 @@ type:
   - 'Troubleshoot'
   - 'Information'
   - 'Other'
-
 trim:
   name: 10
   content: 10
+email:
+  smtp_server: 'smtp.gmail.com'
+  smtp_port: 587
+  notification_days: 10
+  notify_threshold: 1 # every x hours
+  

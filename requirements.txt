@@ -10,3 +10,5 @@ itsdangerous==2.1.2
 PyYAML
 markdown2
 Pillow
+python-dotenv
+APScheduler==3.10.1

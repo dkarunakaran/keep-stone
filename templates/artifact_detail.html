@@ -70,6 +70,13 @@
         </ol>
     </nav>
 
+    {% if type_name == 'Token' and not artifact.is_expired() %}
+        <div class="alert alert-info">
+            <i class="fas fa-bell me-2"></i>
+            Email notifications will be sent when this token is {{ config.email.notification_days }} days from expiry.
+        </div>
+    {% endif %}
+
     <div class="detail-card">
         <div class="card-body p-4">
             <div class="d-flex justify-content-between align-items-start mb-4">
