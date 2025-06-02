@@ -27,7 +27,7 @@
                 <select name="type" class="form-select" onchange="this.form.submit()">
                     <option value="">All Types</option>
                     {% for type in types %}
-                    <option value="{{ type.id }}" {% if type_filter|string == type.id|string %}selected{% endif %}>
+                    <option value="{{ type.id }}" {% if type_filter == type.id|string %}selected{% endif %}>
                         {{ type.name }}
                     </option>
                     {% endfor %}
