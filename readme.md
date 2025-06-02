@@ -30,6 +30,26 @@ docker-compose up --build -d
 docker-compose down
 ```
 
+## Email Notifications
+
+### Setting up Gmail App Password
+1. Visit your [Google Account Settings](https://myaccount.google.com)
+2. Navigate to Security settings
+3. Enable 2-Step Verification if not already enabled
+4. Under "Signing in to Google", select App Passwords
+   - If you don't see this option, 2-Step Verification might not be enabled
+5. Click "Select app" and choose "Mail"
+6. Click "Select device" and choose "Windows Computer"
+7. Click "Generate"
+8. Copy the 16-digit password that appears
+9. Create a `.env` file in the project root:
+   ```
+   SENDER_EMAIL=your-email@gmail.com
+   EMAIL_APP_PASSWORD=your-16-digit-app-password
+   ```
+10. Add `.env` to your `.gitignore` to keep credentials secure
+
+
 ## Usage
 
 ### Adding Artifacts

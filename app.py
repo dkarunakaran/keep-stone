@@ -8,6 +8,9 @@ from sqlalchemy.orm import sessionmaker
 import base64
 from werkzeug.utils import secure_filename
 from markdown2 import Markdown
+from apscheduler.schedulers.background import BackgroundScheduler
+from email_utils import check_expiring_tokens
+import atexit
 import sys
 parent_dir = ".."
 sys.path.append(parent_dir)
@@ -28,6 +31,8 @@ os.makedirs(instance_path, exist_ok=True)
 
 with open("config.yaml") as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
+
+# Create database if it doesn't exist
 utility.create_database(config=config)
 Session = sessionmaker(bind=models.base.engine)
 session = Session()
@@ -39,13 +44,25 @@ Type = models.type.Type
 def inject_date():
     return dict(date=date)
 
-
 # Create markdown renderer
 markdowner = Markdown(extras=["tables", "fenced-code-blocks"])
 
 @app.template_filter('markdown')
 def markdown_filter(text):
     return markdowner.convert(text)
+
+# Setup scheduler for token expiry checks
+notify_threshold = config['email'].get('notify_threshold', 24)
+scheduler = BackgroundScheduler()
+scheduler.add_job(
+    func=lambda: check_expiring_tokens(session, config),
+    trigger="interval",
+    hours=notify_threshold  # Check once per 2 days
+)
+scheduler.start()
+
+# Shutdown scheduler when app stops
+atexit.register(lambda: scheduler.shutdown())
 
 @app.route('/')
 def index():
@@ -218,7 +235,8 @@ def artifact_detail(artifact_id):
                          days_until_expiry=days_until_expiry,
                          status_badge=status_badge,
                          status_text=status_text,
-                         status_icon=status_icon)
+                         status_icon=status_icon,
+                         config=config)
 
 # All routes are defined above. The following runs the app if executed directly.
 if __name__ == '__main__':
