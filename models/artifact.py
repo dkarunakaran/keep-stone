@@ -13,4 +13,8 @@ class Artifact(Base):
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow())
 
     def is_expired(self):
-        return self.expiry_date < date.today()
+        expiry_date = None
+        if self.expiry_date is not None:
+            print("date"+str(self.expiry_date))
+            expiry_date = self.expiry_date < date.today()
+        return expiry_date

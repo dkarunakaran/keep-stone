@@ -50,7 +50,7 @@ def markdown_filter(text):
 @app.route('/')
 def index():
     search_query = request.args.get('search', '')
-    type_filter = request.args.get('type', '')
+    type_filter = request.args.get('type', '')  # Changed to empty string default
     
     # Start with base query
     query = session.query(Artifact)
@@ -61,7 +61,7 @@ def index():
         content_results = query.filter(Artifact.content.ilike(f'%{search_query}%'))
         query = name_results.union(content_results)
     
-    # Apply type filter if present
+    # Apply type filter only if specifically selected
     if type_filter:
         query = query.filter(Artifact.type_id == type_filter)
     
@@ -78,8 +78,7 @@ def index():
                          type_filter=type_filter,
                          today=date.today(),
                          types=types,
-                         types_dict=types_dict,
-                         config=config)
+                         types_dict=types_dict)
 
 @app.route('/add', methods=['GET', 'POST'])
 def add_artifact():
@@ -145,7 +144,9 @@ def update_artifact(artifact_id):
             artifact.name = request.form['name']
             artifact.content = request.form['content']
             artifact.type_id = request.form['artifact_type']
-            expiry_date = datetime.strptime(request.form['expiry_date'], '%Y-%m-%d').date()
+            expiry_date = None
+            if request.form['expiry_date']:
+                expiry_date = datetime.strptime(request.form['expiry_date'], '%Y-%m-%d').date()
             artifact.expiry_date = expiry_date
 
             # Handle removed images
@@ -191,19 +192,25 @@ def artifact_detail(artifact_id):
     type_name = type_obj.name if type_obj else 'Unknown'
     
     # Calculate status
-    days_until_expiry = (artifact.expiry_date - date.today()).days
-    if artifact.is_expired():
-        status_badge = "bg-danger"
-        status_text = "Expired"
-        status_icon = "fas fa-times-circle"
-    elif days_until_expiry <= 14:
-        status_badge = "bg-warning text-dark"
-        status_text = "Expires Soon"
-        status_icon = "fas fa-exclamation-triangle"
+    if artifact.expiry_date is None:
+        days_until_expiry = None
+        status_badge = "bg-secondary"
+        status_text = "No Expiry Date"
+        status_icon = "fas fa-calendar-times"
     else:
-        status_badge = "bg-success"
-        status_text = "Active"
-        status_icon = "fas fa-check-circle"
+        days_until_expiry = (artifact.expiry_date - date.today()).days
+        if artifact.is_expired():
+            status_badge = "bg-danger"
+            status_text = "Expired"
+            status_icon = "fas fa-times-circle"
+        elif days_until_expiry <= 14:
+            status_badge = "bg-warning text-dark"
+            status_text = "Expires Soon"
+            status_icon = "fas fa-exclamation-triangle"
+        else:
+            status_badge = "bg-success"
+            status_text = "Active"
+            status_icon = "fas fa-check-circle"
     
     return render_template('artifact_detail.html', 
                          artifact=artifact,
