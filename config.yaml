@@ -14,6 +14,10 @@ trim:
 email:
   smtp_server: 'smtp.gmail.com'
   smtp_port: 587
-  notification_days: 10
-  notify_threshold: 1 # every x hours
+  notification_days: 10  # Start notifications when X days remain
+  max_notifications: 3   # Maximum number of notifications per token
+  trigger_hour: 13 # hour
+  trigger_minute: 03 # minute
+  timezone: 'Australia/Sydney'
+  scheduled_time: '10:00 AM AEST'  # For displaying scheduled time and should be aligned with tigger_hour, trigger_minute and timezone
   
