@@ -73,7 +73,18 @@
     {% if type_name == 'Token' and not artifact.is_expired() %}
         <div class="alert alert-info">
             <i class="fas fa-bell me-2"></i>
-            Email notifications will be sent when this token is {{ config.email.notification_days }} days from expiry.
+            {% set max_notifications = config.email.max_notifications %}
+            {% set tz = config.email.timezone %}
+            {% if artifact.notification_count < max_notifications %}
+                <span>
+                    Email notifications: {{ artifact.notification_count }}/{{ max_notifications }} sent.
+                    {% if artifact.last_notification_sent %}
+                        Last sent: {{ artifact.last_notification_sent.astimezone(timezone(tz)).strftime('%Y-%m-%d %H:%M:%S') }}
+                    {% endif %}
+                </span>
+            {% else %}
+                <span>Maximum number of notifications ({{ max_notifications }}) has been reached.</span>
+            {% endif %}
         </div>
     {% endif %}
 

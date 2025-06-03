@@ -9,6 +9,8 @@ import base64
 from werkzeug.utils import secure_filename
 from markdown2 import Markdown
 from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
+import pytz
 from email_utils import check_expiring_tokens
 import atexit
 import sys
@@ -44,6 +46,10 @@ Type = models.type.Type
 def inject_date():
     return dict(date=date)
 
+@app.context_processor
+def utility_processor():
+    return dict(timezone=pytz.timezone)
+
 # Create markdown renderer
 markdowner = Markdown(extras=["tables", "fenced-code-blocks"])
 
@@ -52,12 +58,15 @@ def markdown_filter(text):
     return markdowner.convert(text)
 
 # Setup scheduler for token expiry checks
-notify_threshold = config['email'].get('notify_threshold', 24)
 scheduler = BackgroundScheduler()
 scheduler.add_job(
     func=lambda: check_expiring_tokens(session, config),
-    trigger="interval",
-    hours=notify_threshold  # Check once per 2 days
+    trigger=CronTrigger(
+        hour=config['email']['trigger_hour'], 
+        minute=config['email']['trigger_minute'],
+        timezone=pytz.timezone(config['email']['timezone'])  # AEST timezone
+    ),
+    misfire_grace_time=3600  # Allow job to run up to 1 hour late if needed
 )
 scheduler.start()
 

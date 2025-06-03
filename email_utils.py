@@ -4,6 +4,9 @@ from email.mime.multipart import MIMEMultipart
 from datetime import date, timedelta
 import os
 from dotenv import load_dotenv
+from models.artifact import Artifact
+from models.type import Type
+
 
 load_dotenv()
 
@@ -52,15 +55,8 @@ def send_expiry_notification(config, artifact, days_left):
 
 def check_expiring_tokens(session, config):
     """Check for tokens that will expire soon and send notifications"""
-    from models.artifact import Artifact
-    from models.type import Type
-
-    # Get notification threshold from config
-    notification_days = config['email'].get('notification_days', 14)
-    
-    # Calculate the date range for checking
     today = date.today()
-    threshold_date = today + timedelta(days=notification_days)
+    notification_days = config['email'].get('notification_days', 14)
     
     # Get token type ID
     token_type = session.query(Type).filter(Type.name == 'Token').first()
@@ -72,13 +68,16 @@ def check_expiring_tokens(session, config):
         session.query(Artifact)
         .filter(
             Artifact.type_id == token_type.id,
-            Artifact.expiry_date <= threshold_date,
+            Artifact.expiry_date <= today + timedelta(days=notification_days),
             Artifact.expiry_date > today
         )
         .all()
     )
     
-    # Send notifications for each expiring token
     for token in expiring_tokens:
-        days_left = (token.expiry_date - today).days
-        send_expiry_notification(config, token, days_left)
+        if token.can_send_notification(config):
+            days_left = (token.expiry_date - today).days
+            if send_expiry_notification(config, token, days_left):
+                token.record_notification()
+                session.commit()
+                print(f"Notification sent for {token.name} ({token.notification_count} sent)")

@@ -12,3 +12,4 @@ markdown2
 Pillow
 python-dotenv
 APScheduler==3.10.1
+pytz>=2023.3
