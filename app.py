@@ -106,51 +106,74 @@ def index():
                          types=types,
                          types_dict=types_dict)
 
+
 @app.route('/add', methods=['GET', 'POST'])
 def add_artifact():
     if request.method == 'POST':
-        name = request.form['name']
-        type_id = request.form['artifact_type']
-        content = request.form['content']
-        expiry_date_str = request.form['expiry_date']
-        
         try:
+            # Get form data
+            name = request.form['name']
+            type_id = request.form['artifact_type']
+            content = request.form['content']
+            expiry_date_str = request.form.get('expiry_date')
+            
+            # Handle expiry date
             expiry_date = None
             if expiry_date_str:
                 expiry_date = datetime.strptime(expiry_date_str, '%Y-%m-%d').date()
             
-            # Handle multiple image uploads
+            # Handle image uploads
             images_data = []
-            if 'images[]' in request.files:
-                files = request.files.getlist('images[]')
-                for file in files:
-                    if file and file.filename:
-                        image_name = secure_filename(file.filename)
-                        image_data = base64.b64encode(file.read()).decode('utf-8')
-                        images_data.append({
-                            'name': image_name,
-                            'data': image_data
-                        })
+            files = request.files.getlist('images[]')
             
+            for file in files:
+                if file and file.filename:
+                    # Security check
+                    filename = secure_filename(file.filename)
+                    
+                    # Validate file type
+                    if not file.content_type.startswith('image/'):
+                        raise ValueError(f"Invalid file type: {filename}")
+                    
+                    # Read and validate file content
+                    file_content = file.read()
+                    if len(file_content) > 5 * 1024 * 1024:  # 5MB limit
+                        raise ValueError(f"File too large: {filename}")
+                    
+                    # Convert to base64
+                    image_data = base64.b64encode(file_content).decode('utf-8')
+                    
+                    # Add to images list
+                    images_data.append({
+                        'name': filename,
+                        'data': image_data
+                    })
+            
+            # Create new artifact
             artifact = Artifact(
                 name=name,
+                type_id=type_id,
                 content=content,
                 expiry_date=expiry_date,
-                type_id=type_id,
                 images=images_data
             )
             
+            # Save to database
             session.add(artifact)
             session.commit()
-            
-            flash('Artifact added successfully!', 'success')
+
+            flash('Artifact created successfully!', 'success')
             return redirect(url_for('index'))
             
-        except ValueError:
-            flash('Invalid date format. Please use YYYY-MM-DD.', 'error')
+        except ValueError as ve:
+            flash(str(ve), 'error')
+            session.rollback()
         except Exception as e:
-            flash(f'Error: {str(e)}', 'error')
-
+            flash('An error occurred while creating the artifact.', 'error')
+            session.rollback()
+            app.logger.error(f"Error creating artifact: {str(e)}")
+    
+    # GET request - show form
     types = session.query(Type).all()
     return render_template('add_artifact.html', types=types)
 
@@ -167,41 +190,88 @@ def update_artifact(artifact_id):
     artifact = session.query(Artifact).filter(Artifact.id==artifact_id).first()
     if request.method == 'POST':
         try:
+            # Update basic info
             artifact.name = request.form['name']
             artifact.content = request.form['content']
             artifact.type_id = request.form['artifact_type']
+            
+            # Handle expiry date
             expiry_date = None
-            if request.form['expiry_date']:
+            if request.form.get('expiry_date'):
                 expiry_date = datetime.strptime(request.form['expiry_date'], '%Y-%m-%d').date()
             artifact.expiry_date = expiry_date
 
-            # Handle removed images
+            # Initialize images array if None
+            if artifact.images is None:
+                artifact.images = []
+            else:
+                # Convert to list if it's not already
+                artifact.images = list(artifact.images)
+
+            # Handle removed images first
             removed_images = request.form.get('removed_images', '').split(',')
-            if artifact.images:
-                artifact.images = [img for img in artifact.images if img['name'] not in removed_images]
+            if removed_images[0]:  # Check if there are actually removed images
+                # Create new list without removed images
+                artifact.images = [img for img in artifact.images 
+                                 if img['name'] not in removed_images]
 
             # Handle new images
-            if 'images[]' in request.files:
-                files = request.files.getlist('images[]')
-                for file in files:
-                    if file and file.filename:
-                        image_name = secure_filename(file.filename)
-                        image_data = base64.b64encode(file.read()).decode('utf-8')
-                        if not artifact.images:
-                            artifact.images = []
-                        artifact.images.append({
-                            'name': image_name,
+            files = request.files.getlist('images[]')
+            new_images = []
+            
+            for file in files:
+                if file and file.filename:
+                    # Security check
+                    filename = secure_filename(file.filename)
+                    
+                    # Skip if image with same name already exists
+                    if any(img['name'] == filename for img in artifact.images):
+                        continue
+                    
+                    # Validate file type
+                    if not file.content_type.startswith('image/'):
+                        raise ValueError(f"Invalid file type: {filename}")
+                    
+                    try:
+                        # Read and validate file content
+                        file_content = file.read()
+                        if len(file_content) > 5 * 1024 * 1024:  # 5MB limit
+                            raise ValueError(f"File too large: {filename}")
+                        
+                        # Convert to base64
+                        image_data = base64.b64encode(file_content).decode('utf-8')
+                        
+                        # Add to new images list
+                        new_images.append({
+                            'name': filename,
                             'data': image_data
                         })
+                    except Exception as e:
+                        app.logger.error(f"Error processing file {filename}: {str(e)}")
+                        raise ValueError(f"Error processing file {filename}")
 
+            # Update artifact's images - combine existing with new
+            if new_images:
+                artifact.images.extend(new_images)
+
+            # Explicitly mark as modified
+            session.add(artifact)
+            session.flush()  # Flush changes to get any DB errors before commit
+            
+            # Commit all changes
             session.commit()
+            
             flash('Artifact updated successfully!', 'success')
             return redirect(url_for('index'))
             
-        except ValueError:
-            flash('Invalid date format. Please use YYYY-MM-DD.', 'error')
+        except ValueError as ve:
+            flash(str(ve), 'error')
+            session.rollback()
         except Exception as e:
             flash(f'Error updating artifact: {str(e)}', 'error')
+            session.rollback()
+            app.logger.error(f"Error updating artifact: {str(e)}")
+            return redirect(url_for('update_artifact', artifact_id=artifact_id))
 
     types = session.query(Type).all()
     return render_template('update_artifact.html', artifact=artifact, types=types)

@@ -2,264 +2,248 @@
 
 {% block title %}Add New Artifact - KeepStone{% endblock %}
 
+{% block head %}
+{{ super() }}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
+<style>
+    /* ...existing styles... */
+    .editor-container {
+        max-width: 800px;
+        margin: 0 auto;
+        background: white;
+        min-height: 100vh;
+        padding: 2rem;
+    }
+    .title-input { font-family: 'Georgia', serif; font-size: 2.5rem; font-weight: bold; border: none; width: 100%; margin-bottom: 1.5rem; padding: 0; }
+    .title-input:focus { outline: none; box-shadow: none; }
+    .type-select { border: none; color: #6b7280; padding-left: 0; margin-bottom: 2rem; font-size: 1.1rem; }
+    .type-select:focus { outline: none; box-shadow: none; }
+    .editor-toolbar { border: none; padding: 0; border-bottom: 1px solid #e5e7eb; margin-bottom: 1rem; }
+    .CodeMirror { border: none !important; padding: 0; font-family: 'Georgia', serif; font-size: 1.2rem; line-height: 1.8; }
+    .image-section { margin: 2rem 0; border-top: 1px solid #e5e7eb; padding-top: 2rem; }
+    .image-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .image-item { position: relative; aspect-ratio: 16/9; border-radius: 0.5rem; overflow: hidden; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); }
+    .image-item img { width: 100%; height: 100%; object-fit: cover; }
+    .image-item .remove-btn { position: absolute; top: 0.5rem; right: 0.5rem; background: rgba(0,0,0,0.5); color: white; border: none; border-radius: 0.25rem; padding: 0.25rem 0.5rem; font-size: 0.875rem; opacity: 0; transition: opacity 0.3s ease; cursor: pointer; }
+    .image-item:hover .remove-btn { opacity: 1; }
+    .dropzone { border: 2px dashed #e5e7eb; border-radius: 0.5rem; padding: 2rem; text-align: center; cursor: pointer; transition: all 0.3s ease; }
+    .dropzone:hover { border-color: #6366f1; background-color: #f8fafc; }
+    .dropzone.disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
+    .image-count { display: block; margin-top: 0.5rem; color: #6b7280; font-size: 0.875rem; }
+    .floating-actions { position: fixed; bottom: 2rem; right: 2rem; display: flex; gap: 1rem; z-index: 1000; }
+    .date-input { border: none; color: #6b7280; padding-left: 0; margin-top: 2rem; font-size: 1.1rem; }
+    .date-input:focus { outline: none; box-shadow: none; }
+    @media (max-width: 768px) {
+        .floating-actions { position: static; margin-top: 2rem; padding: 1rem; background: white; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end; width: 100%; }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<nav aria-label="breadcrumb" class="mb-4">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item">
-            <a href="{{ url_for('index') }}" class="text-decoration-none">
-                <i class="fas fa-home text-primary me-1"></i>Dashboard
-            </a>
-        </li>
-        <li class="breadcrumb-item active">Add New Artifact</li>
-    </ol>
-</nav>
+<div class="editor-container">
+    <form method="POST" enctype="multipart/form-data" id="artifact-form">
+        <input type="text" 
+               class="title-input" 
+               id="name" 
+               name="name" 
+               required
+               placeholder="Title">
 
-<div class="row justify-content-center">
-    <div class="col-md-14 col-lg-12">
-        <div class="card shadow-lg border-0">
-            <div class="card-body p-4">
-                <h2 class="card-title mb-4">
-                    <i class="fas fa-plus text-primary me-2"></i>Add New Artifact
-                </h2>
+        <select class="form-select type-select" 
+                id="artifact_type" 
+                name="artifact_type" 
+                required>
+            <option value="" selected disabled>Select type</option>
+            {% for type in types %}
+            <option value="{{ type.id }}">{{ type.name }}</option>
+            {% endfor %}
+        </select>
 
-                <form method="POST" enctype="multipart/form-data">
-                    <div class="mb-4">
-                        <label for="name" class="form-label fw-semibold">
-                            <i class="fas fa-tag me-2 text-primary"></i>Artifact Name
-                        </label>
-                        <input type="text" class="form-control search-box" id="name" name="name" required
-                               placeholder="e.g., GitHub API Token, AWS Access Key">
-                    </div>
+        <textarea id="content" name="content"></textarea>
 
-                    <div class="mb-4">
-                        <label for="artifact_type" class="form-label fw-semibold">
-                            <i class="fas fa-key me-2 text-primary"></i>Artifact Type
-                        </label>
-                        <select class="form-select" id="artifact_type" name="artifact_type" required>
-                            <option value="" selected disabled>Select an artifact type</option>
-                            {% for type in types %}
-                            <option value="{{ type.id }}">{{ type.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    
-                    <div class="mb-4">
-                        <label for="content" class="form-label fw-semibold">
-                            <i class="fas fa-info-circle me-2 text-primary"></i>Content
-                        </label>
-                        <textarea class="form-control" id="content" name="content" required></textarea>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="form-label fw-semibold">
-                            <i class="fas fa-images me-2 text-primary"></i>Images (Optional)
-                        </label>
-                        
-                        <!-- Image Upload Card -->
-                        <div class="card">
-                            <div class="card-header bg-light">
-                                <i class="fas fa-upload me-2"></i>Add Images
-                            </div>
-                            <div class="card-body">
-                                <div class="dropzone-container mb-3 p-4 border-2 border-dashed rounded-3 text-center">
-                                    <input type="file" class="form-control d-none" id="images" name="images[]" 
-                                           accept="image/*" multiple onchange="previewImages(event)">
-                                    <label for="images" class="mb-0 cursor-pointer">
-                                        <i class="fas fa-cloud-upload-alt fa-2x text-primary mb-2 d-block"></i>
-                                        <p class="mb-0">Drag and drop images here or click to select files</p>
-                                        <small class="text-muted">Supported formats: JPG, PNG, GIF (Max 5MB each)</small>
-                                    </label>
-                                </div>
-                                <div id="imagePreview" class="row g-2"></div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-4">
-                        <label for="expiry_date" class="form-label fw-semibold">
-                            <i class="fas fa-calendar me-2 text-primary"></i>Expiry Date
-                        </label>
-                        <input type="date" class="form-control search-box" id="expiry_date" name="expiry_date">
-                    </div>
-                                    
-                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
-                        <a href="{{ url_for('index') }}" class="btn btn-light me-2">
-                            <i class="fas fa-arrow-left me-2"></i>Cancel
-                        </a>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save me-2"></i>Add Artifact
-                        </button>
-                    </div>
-                </form>
+        <div class="image-section">
+            <h5 class="text-muted mb-3">Images</h5>
+            
+            <div class="dropzone" id="dropzone">
+                <input type="file" 
+                       class="d-none" 
+                       id="images" 
+                       name="images[]" 
+                       accept="image/*" 
+                       multiple>
+                <i class="fas fa-cloud-upload-alt fa-2x text-primary mb-2"></i>
+                <p class="mb-1">Drag and drop images here</p>
+                <small class="text-muted">or click to select files</small>
+                <span class="image-count">0/10 images</span>
             </div>
+
+            <div class="image-gallery" id="imagePreview"></div>
         </div>
-    </div>
+
+        <input type="date" 
+               class="form-control date-input" 
+               id="expiry_date" 
+               name="expiry_date"
+               placeholder="Set expiry date (optional)">
+    </form>
 </div>
 
-<div class="row mt-4">
-    <div class="col-12">
-        <div class="card bg-light border-0">
-            <div class="card-body">
-                <h6 class="card-title d-flex align-items-center mb-3">
-                    <i class="fas fa-lightbulb text-primary me-2"></i>Tips
-                </h6>
-                <ul class="mb-0 text-muted small">
-                    <li>Choose meaningful names that are easy to identify later</li>
-                    <li>Use markdown in the content field for better formatting</li>
-                    <li>Images should be clear and relevant to the artifact</li>
-                    <li>Set realistic expiry dates and review regularly</li>
-                </ul>
-            </div>
-        </div>
-    </div>
+<div class="floating-actions">
+    <a href="{{ url_for('index') }}" class="btn btn-light">
+        Cancel
+    </a>
+    <button type="submit" 
+            form="artifact-form" 
+            class="btn btn-primary px-4">
+        Publish
+    </button>
 </div>
 {% endblock %}
 
 {% block scripts %}
 {{ super() }}
-<style>
-    .dropzone-container {
-        border: 2px dashed #dee2e6;
-        transition: all 0.3s ease;
-        cursor: pointer;
-    }
-    .dropzone-container:hover {
-        border-color: #6366f1;
-        background-color: #f8fafc;
-    }
-    .image-container {
-        overflow: hidden;
-        border-radius: 0.5rem;
-    }
-    .image-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0,0,0,0.5);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        opacity: 0;
-        transition: all 0.3s ease;
-    }
-    .image-container:hover .image-overlay {
-        opacity: 1;
-    }
-</style>
-
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.css">
-<script src="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
 <script>
-    // Initialize SimpleMDE
-    var simplemde = new SimpleMDE({ 
-        element: document.getElementById("content"),
+    // Initialize EasyMDE
+    const easyMDE = new EasyMDE({
+        element: document.getElementById('content'),
         spellChecker: false,
-        forceSync: true,
-        toolbar: ["bold", "italic", "heading", "|", 
-                 "quote", "unordered-list", "ordered-list", "|",
-                 "link", "image", "table", "|",
-                 "preview", "side-by-side", "fullscreen"],
+        autofocus: true,
+        placeholder: 'Write your content here...',
+        toolbar: [
+            'bold', 'italic', 'heading', '|',
+            'quote', 'unordered-list', 'ordered-list', '|',
+            'link', 'image', 'table', '|',
+            'preview', 'side-by-side', 'fullscreen'
+        ]
     });
 
-    // File management
-    let maxFileSize = 5 * 1024 * 1024; // 5MB
-    let currentFiles = new DataTransfer();
+    // Initialize file handling variables
+    const dropzone = document.getElementById('dropzone');
+    const imageInput = document.getElementById('images');
+    const previewContainer = document.getElementById('imagePreview');
+    const maxFiles = 10;
+    const maxFileSize = 5 * 1024 * 1024; // 5MB
 
-    function previewImages(event) {
-        const previewDiv = document.getElementById('imagePreview');
-        const files = Array.from(event.target.files).filter(file => {
-            if (file.size > maxFileSize) {
-                alert(`File ${file.name} is too large. Maximum size is 5MB.`);
-                return false;
+    // Store files in a Map to maintain file objects
+    const fileMap = new Map();
+
+    function updateImageInput() {
+        const dt = new DataTransfer();
+        const previews = previewContainer.querySelectorAll('.image-item');
+        
+        // Add files that have previews to DataTransfer
+        previews.forEach(preview => {
+            const fileName = preview.dataset.filename;
+            const file = fileMap.get(fileName);
+            if (file) {
+                dt.items.add(file);
             }
-            if (!file.type.startsWith('image/')) {
-                alert(`File ${file.name} is not an image.`);
-                return false;
-            }
-            return true;
         });
 
-        // Update DataTransfer object with valid files
-        currentFiles = new DataTransfer();
-        files.forEach(file => currentFiles.items.add(file));
-        document.getElementById('images').files = currentFiles.files;
-        
-        // Clear existing previews
-        previewDiv.innerHTML = '';
-        
-        // Generate previews
-        files.forEach((file, index) => {
-            const reader = new FileReader();
-            const previewContainer = document.createElement('div');
-            previewContainer.className = 'col-6 col-md-4 col-lg-3';
-            
-            reader.onload = function(e) {
-                previewContainer.innerHTML = `
-                    <div class="position-relative image-container">
-                        <img src="${e.target.result}" class="img-fluid rounded shadow-sm" 
-                             alt="${file.name}" 
-                             style="height: 150px; width: 100%; object-fit: cover;">
-                        <div class="image-overlay">
-                            <button type="button" class="btn btn-sm btn-danger" 
-                                    onclick="removeImage(this, ${index})">
-                                <i class="fas fa-trash me-1"></i>Remove
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }
-            reader.readAsDataURL(file);
-            previewDiv.appendChild(previewContainer);
-        });
+        // Update the file input
+        imageInput.files = dt.files;
+        console.log('Files in input:', Array.from(imageInput.files).map(f => f.name));
+        console.log('Total files:', imageInput.files.length);
     }
 
-    function removeImage(button, index) {
-        const input = document.getElementById('images');
-        const dt = new DataTransfer();
-        const { files } = input;
+    function handleFiles(files) {
+        const remainingSlots = Math.max(0, maxFiles - previewContainer.children.length);
+        const filesToProcess = Array.from(files).slice(0, remainingSlots);
         
-        Array.from(files).forEach((file, i) => {
-            if (i !== index) dt.items.add(file);
+        if (files.length > remainingSlots) {
+            alert(`You can only upload ${remainingSlots} more image${remainingSlots === 1 ? '' : 's'}`);
+        }
+
+        filesToProcess.forEach(file => {
+            if (fileMap.has(file.name)) {
+                console.log(`Skipping duplicate file: ${file.name}`);
+                return;
+            }
+
+            if (file.size > maxFileSize) {
+                alert(`File ${file.name} is too large (max 5MB)`);
+                return;
+            }
+
+            if (!file.type.startsWith('image/')) {
+                alert(`File ${file.name} is not an image`);
+                return;
+            }
+
+            // Store file in Map
+            fileMap.set(file.name, file);
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const div = document.createElement('div');
+                div.className = 'image-item';
+                div.dataset.filename = file.name;
+                div.innerHTML = `
+                    <img src="${e.target.result}" alt="${file.name}">
+                    <button type="button" class="remove-btn">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                
+                div.querySelector('.remove-btn').onclick = () => {
+                    div.remove();
+                    fileMap.delete(file.name);
+                    updateImageInput();
+                    updateImageCount();
+                };
+
+                previewContainer.appendChild(div);
+                updateImageCount();
+                updateImageInput();
+            };
+            reader.readAsDataURL(file);
         });
-        
-        input.files = dt.files;
-        const container = button.closest('.col-6');
-        container.style.transition = 'opacity 0.3s ease';
-        container.style.opacity = '0';
-        setTimeout(() => container.remove(), 300);
     }
 
     // Drag and drop handling
-    const dropzone = document.querySelector('.dropzone-container');
+    dropzone.onclick = () => {
+        if (!dropzone.classList.contains('disabled')) {
+            imageInput.click();
+        }
+    };
     
+    imageInput.onchange = (e) => {
+        e.preventDefault();
+        handleFiles(e.target.files);
+    };
+
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        dropzone.addEventListener(eventName, e => {
+        dropzone.addEventListener(eventName, (e) => {
             e.preventDefault();
             e.stopPropagation();
-        }, false);
+        });
     });
 
     ['dragenter', 'dragover'].forEach(eventName => {
         dropzone.addEventListener(eventName, () => {
-            dropzone.style.borderColor = '#6366f1';
-            dropzone.style.backgroundColor = '#f8fafc';
-        }, false);
+            if (!dropzone.classList.contains('disabled')) {
+                dropzone.style.borderColor = '#6366f1';
+                dropzone.style.backgroundColor = '#f8fafc';
+            }
+        });
     });
 
     ['dragleave', 'drop'].forEach(eventName => {
         dropzone.addEventListener(eventName, () => {
-            dropzone.style.borderColor = '#dee2e6';
-            dropzone.style.backgroundColor = '';
-        }, false);
+            dropzone.style.borderColor = '#e5e7eb';
+            dropzone.style.backgroundColor = 'transparent';
+        });
     });
 
-    dropzone.addEventListener('drop', e => {
-        const files = e.dataTransfer.files;
-        document.getElementById('images').files = files;
-        previewImages({ target: { files } });
-    }, false);
+    dropzone.addEventListener('drop', (e) => {
+        if (!dropzone.classList.contains('disabled')) {
+            handleFiles(e.dataTransfer.files);
+        }
+    });
+
+    // Initialize image count
+    updateImageCount();
 
     // Set minimum date to today
     document.getElementById('expiry_date').min = new Date().toISOString().split('T')[0];
