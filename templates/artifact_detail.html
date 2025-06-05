@@ -11,6 +11,8 @@
         border-radius: 0.75rem;
         border: 1px solid rgb(226 232 240);
         box-shadow: var(--card-shadow);
+        max-width: 1400px;  /* Increased max-width */
+        margin: 0 auto;     /* Center the card */
     }
     
     .markdown-body {
@@ -25,12 +27,29 @@
         cursor: zoom-in;
         border-radius: 0.5rem;
         box-shadow: var(--card-shadow);
+        width: 100%;
+        height: 200px;    /* Increased height */
+        object-fit: cover;
     }
 
     .image-gallery img:hover {
         transform: scale(1.02);
         box-shadow: var(--hover-shadow);
     }
+
+    /* Add styles for Fancybox */
+    .fancybox__content {
+        background: #fff;
+        padding: 0;
+    }
+
+    .fancybox__image {
+        max-width: 90vw;
+        max-height: 90vh;
+        object-fit: contain;
+    }
+    
+
 
     .status-indicator {
         width: 0.5rem;
@@ -123,7 +142,7 @@
             </div>
 
             <div class="row">
-                <div class="col-lg-8">
+                <div class="col-lg-12">
                     {% if artifact.images %}
                     <div class="detail-section mb-4">
                         <h5 class="text-muted mb-3">
@@ -132,14 +151,19 @@
                         <div class="row g-3 image-gallery">
                             {% for image in artifact.images %}
                             <div class="col-6 col-md-4 col-lg-3">
-                                <a href="data:image/jpeg;base64,{{ image.data }}"
-                                   data-fancybox="gallery"
-                                   data-caption="{{ image.name }}">
-                                    <img src="data:image/jpeg;base64,{{ image.data }}" 
-                                         alt="{{ image.name }}"
-                                         class="img-fluid"
-                                         style="height: 150px; width: 100%; object-fit: cover;">
-                                </a>
+                                <div class="image-card">
+                                    <a href="data:image/jpeg;base64,{{ image.data }}"
+                                    data-fancybox="gallery"
+                                    data-caption="{{ image.name }}">
+                                        <img src="data:image/jpeg;base64,{{ image.data }}" 
+                                            alt="{{ image.name }}"
+                                            class="img-fluid"
+                                            style="height: 150px; width: 100%; object-fit: cover;">
+                                    </a>
+                                    <p class="text-center mt-2 text-truncate" title="{{ image.name }}">
+                                        {{ image.name }}
+                                    </p>
+                                </div>
                             </div>
                             {% endfor %}
                         </div>
@@ -204,18 +228,36 @@
 <script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.umd.js"></script>
 <script>
     Fancybox.bind("[data-fancybox]", {
-        Toolbar: {
-            display: [
-                { id: "prev", position: "center" },
-                { id: "counter", position: "center" },
-                { id: "next", position: "center" },
-                "zoom",
-                "slideshow",
-                "fullscreen",
-                "download",
-                "close",
-            ],
+        Images: {
+            zoom: true,
         },
+        Toolbar: {
+            display: {
+                left: ["prev", "counter", "next"],
+                middle: [],
+                right: ["zoom", "slideshow", "fullscreen", "close"],
+            },
+        },
+        Thumbs: {
+            autoStart: true,
+        },
+        Image: {
+            fit: "contain",
+            click: "close",
+            wheel: "slide",
+        },
+        on: {
+            ready: (fancybox) => {
+                // Ensure images are loaded properly
+                const images = fancybox.container.querySelectorAll(".fancybox__image");
+                images.forEach(img => {
+                    if (img.src.startsWith("data:image")) {
+                        img.style.maxWidth = "90vw";
+                        img.style.maxHeight = "90vh";
+                    }
+                });
+            }
+        }
     });
 </script>
 {% endblock %}
