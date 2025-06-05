@@ -77,7 +77,7 @@
                 {% elif days_until_expiry <= 14 %}
                     {% set card_class = "token-warning" %}
                     {% set status_badge = "bg-warning" %}
-                    {% set status_text = "Expires Soon" %}
+                    {% set status_text = "Expiring" %}
                     {% set status_icon = "fas fa-exclamation-triangle" %}
                 {% else %}
                     {% set card_class = "token-active" %}
@@ -102,9 +102,14 @@
                      onclick="navigateToArtifact(event, '{{ url_for('artifact_detail', artifact_id=artifact.id) }}')">
                     <div class="p-3">
                         <div class="d-flex justify-content-between align-items-start mb-2">
-                            <h6 class="mb-0 fw-semibold text-truncate text-dark" style="max-width: 150px;">
+                            <h6 class="mb-0 fw-semibold text-dark" style="max-width: 300px;">
                                 <i class="{{ type_icon }} text-primary me-2"></i>
-                                {{ artifact.name }}
+                                {% if type_name == 'Token' %}
+                                    {{ artifact.name[:config.trim.name] }}{% if artifact.name|length > config.trim.name %}...{% endif %}
+                                {% else %}
+                                    {{ artifact.name[:config.trim.name+config.trim.extra] }}{% if artifact.name|length > config.trim.name+config.trim.extra %}...{% endif %}
+                                {% endif %}
+
                             </h6>
                             {% if type_name == 'Token' %}
                                 <span class="badge {{ status_badge }}">
@@ -118,7 +123,7 @@
                         </div>
 
                         <p class="text-muted small mb-2" style="height: 3em; overflow: hidden;">
-                            {{ artifact.content[:100] }}{% if artifact.content|length > 100 %}...{% endif %}
+                            {{ artifact.content[:config.trim.content] }}{% if artifact.content|length > config.trim.content %}...{% endif %}
                         </p>
 
                         <div class="d-flex justify-content-between align-items-center">
@@ -187,7 +192,7 @@
                             <small>More than 14 days remaining</small>
                         </div>
                         <div class="d-flex align-items-center mb-2">
-                            <span class="badge bg-warning me-2">Expires Soon</span>
+                            <span class="badge bg-warning me-2">Expiring</span>
                             <small>14 days or less remaining</small>
                         </div>
                         <div class="d-flex align-items-center">
