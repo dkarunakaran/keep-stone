@@ -9,8 +9,9 @@ type:
   - 'Information'
   - 'Other'
 trim:
-  name: 10
-  content: 10
+  name: 15
+  content: 100
+  extra: 7
 email:
   smtp_server: 'smtp.gmail.com'
   smtp_port: 587

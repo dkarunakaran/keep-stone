@@ -104,6 +104,7 @@ def index():
                          type_filter=type_filter,
                          today=date.today(),
                          types=types,
+                         config=config,
                          types_dict=types_dict)
 
 
