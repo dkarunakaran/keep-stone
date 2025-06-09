@@ -18,7 +18,7 @@ email:
   smtp_port: 587
   notification_days: 10  # Start notifications when X days remain
   max_notifications: 3   # Maximum number of notifications per token
-  notification_interval: 1  # Hours between notifications
+  notification_interval: 24  # Hours between notifications
   timezone: 'Australia/Sydney'
 storage:
   image_path: "static/uploads"  # Relative to app root
