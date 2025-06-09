@@ -181,8 +181,8 @@ def add_artifact():
 @app.route('/delete/<int:artifact_id>', methods=['POST'])
 def delete_artifact(artifact_id):
     artifact = session.query(Artifact).filter(Artifact.id==artifact_id).first()
-    session.delete(artifact)
-    session.commit()
+    #session.delete(artifact)
+    #session.commit()
     flash('Artifact deleted successfully!', 'success')
     return redirect(url_for('index'))
 
