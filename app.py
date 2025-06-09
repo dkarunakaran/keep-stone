@@ -8,8 +8,6 @@ from sqlalchemy.orm import sessionmaker
 import base64
 from werkzeug.utils import secure_filename
 from markdown2 import Markdown
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.cron import CronTrigger
 import pytz
 from email_utils import check_expiring_tokens
 from flask import send_from_directory
@@ -58,22 +56,6 @@ markdowner = Markdown(extras=["tables", "fenced-code-blocks"])
 @app.template_filter('markdown')
 def markdown_filter(text):
     return markdowner.convert(text)
-
-# Setup scheduler for token expiry checks
-scheduler = BackgroundScheduler()
-scheduler.add_job(
-    func=lambda: check_expiring_tokens(session, config),
-    trigger=CronTrigger(
-        hour=config['email']['trigger_hour'], 
-        minute=config['email']['trigger_minute'],
-        timezone=pytz.timezone(config['email']['timezone'])  # AEST timezone
-    ),
-    misfire_grace_time=3600  # Allow job to run up to 1 hour late if needed
-)
-scheduler.start()
-
-# Shutdown scheduler when app stops
-atexit.register(lambda: scheduler.shutdown())
 
 @app.route('/')
 def index():

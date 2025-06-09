@@ -26,7 +26,7 @@ class Artifact(Base):
             return False
 
         # Get config values
-        notify_threshold = config['email'].get('notify_threshold', 24)  # hours
+        hours_between_notifications = config['email'].get('notification_interval', 24)  # Fixed gap
         notification_days = config['email'].get('notification_days', 14)
         max_notifications = config['email'].get('max_notifications', 3)
 
@@ -39,10 +39,10 @@ class Artifact(Base):
         if days_until_expiry > notification_days or days_until_expiry < 0:
             return False
 
-        # Check if enough time has passed since last notification
+        # Check if 24 hours have passed since last notification
         if self.last_notification_sent:
             hours_since_last = (datetime.utcnow() - self.last_notification_sent).total_seconds() / 3600
-            if hours_since_last < notify_threshold:
+            if hours_since_last < hours_between_notifications:
                 return False
 
         return True
