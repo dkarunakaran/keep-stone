@@ -1,7 +1,7 @@
 maintainer: Dhanoop Karunakaran
 debug: False
 sql_alchemy:
-  loc: '/app/instance'
+  loc: '/app/db'
   db: 'data.db'
 type: 
   - 'Token'
@@ -21,4 +21,7 @@ email:
   trigger_minute: 03 # minute
   timezone: 'Australia/Sydney'
   scheduled_time: '10:00 AM AEST'  # For displaying scheduled time and should be aligned with tigger_hour, trigger_minute and timezone
-  
+storage:
+  image_path: "static/uploads"  # Relative to app root
+  allowed_extensions: ["jpg", "jpeg", "png", "gif"]
+  max_file_size: 5242880  # 5MB in bytes

@@ -1,5 +1,8 @@
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import and_
+import os
+from werkzeug.utils import secure_filename
+import uuid
 
 import sys
 parent_dir = ".."
@@ -38,6 +41,31 @@ def create_database(session=None, config=None):
     if session is not None:
         session.close()
 
+def get_unique_filename(filename):
+    """Generate unique filename while preserving extension"""
+    ext = os.path.splitext(filename)[1]
+    return f"{uuid.uuid4().hex}{ext}"
 
+def save_image(file, config):
+    """Save image to disk and return relative path"""
+    filename = secure_filename(file.filename)
+    unique_name = get_unique_filename(filename)
+    
+    # Create upload directory if it doesn't exist
+    upload_path = os.path.join(os.path.dirname(__file__), config['storage']['image_path'])
+    os.makedirs(upload_path, exist_ok=True)
+    
+    # Save file
+    file_path = os.path.join(upload_path, unique_name)
+    file.save(file_path)
+    
+    # Return relative path for database storage
+    return os.path.join(config['storage']['image_path'], unique_name)
+
+def delete_image(image_path):
+    """Delete image from disk"""
+    full_path = os.path.join(os.path.dirname(__file__), image_path)
+    if os.path.exists(full_path):
+        os.remove(full_path)
 
 

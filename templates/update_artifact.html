@@ -193,8 +193,8 @@
             <div class="image-gallery">
                 {% for image in artifact.images %}
                 <div class="image-item" data-existing="true" data-filename="{{ image.name }}">
-                    <img src="data:image/jpeg;base64,{{ image.data }}" 
-                         alt="{{ image.name }}">
+                    <img src="{{ url_for('static', filename=image.path.replace('static/', '')) }}" 
+                        alt="{{ image.name }}">
                     <button type="button" 
                             class="remove-btn"
                             onclick="removeExistingImage(this, '{{ image.name }}')">
