@@ -6,9 +6,22 @@ import os
 from dotenv import load_dotenv
 from models.artifact import Artifact
 from models.type import Type
+import logging
+import sys
 
 
 load_dotenv()
+
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('/var/log/keepstone/scheduler.log'),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger(__name__)
 
 def send_expiry_notification(config, artifact, days_left):
     """Send email notification for expiring tokens"""
@@ -42,15 +55,15 @@ def send_expiry_notification(config, artifact, days_left):
     message.attach(MIMEText(body, "html"))
 
     try:
-        # Create secure SSL/TLS connection
         server = smtplib.SMTP(smtp_server, smtp_port)
         server.starttls()
         server.login(sender_email, sender_password)
         server.send_message(message)
         server.quit()
+        logger.info(f"Sent notification for {artifact.name} ({days_left} days remaining)")
         return True
     except Exception as e:
-        print(f"Failed to send email notification: {str(e)}")
+        logger.error(f"Failed to send email notification for {artifact.name}: {str(e)}")
         return False
 
 def check_expiring_tokens(session, config):
@@ -80,4 +93,4 @@ def check_expiring_tokens(session, config):
             if send_expiry_notification(config, token, days_left):
                 token.record_notification()
                 session.commit()
-                print(f"Notification sent for {token.name} ({token.notification_count} sent)")
+                logger.info(f"Notification recorded for {token.name} (total: {token.notification_count})")
