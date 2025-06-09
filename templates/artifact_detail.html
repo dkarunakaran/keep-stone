@@ -248,8 +248,8 @@
                 <a href="data:image/jpeg;base64,{{ image.data }}"
                    data-fancybox="gallery"
                    data-caption="{{ image.name }}">
-                    <img src="data:image/jpeg;base64,{{ image.data }}" 
-                         alt="{{ image.name }}">
+                    <img src="{{ url_for('static', filename=image.path.replace('static/', '')) }}" 
+                        alt="{{ image.name }}">
                 </a>
                 <div class="image-name text-truncate" title="{{ image.name }}">
                     {{ image.name }}

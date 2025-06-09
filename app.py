@@ -12,7 +12,9 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 import pytz
 from email_utils import check_expiring_tokens
+from flask import send_from_directory
 import atexit
+from utility import save_image, delete_image
 import sys
 parent_dir = ".."
 sys.path.append(parent_dir)
@@ -124,55 +126,45 @@ def add_artifact():
                 expiry_date = datetime.strptime(expiry_date_str, '%Y-%m-%d').date()
             
             # Handle image uploads
-            images_data = []
             files = request.files.getlist('images[]')
+            images_data = []
             
             for file in files:
                 if file and file.filename:
-                    # Security check
-                    filename = secure_filename(file.filename)
-                    
-                    # Validate file type
                     if not file.content_type.startswith('image/'):
-                        raise ValueError(f"Invalid file type: {filename}")
+                        raise ValueError(f"Invalid file type: {file.filename}")
                     
-                    # Read and validate file content
-                    file_content = file.read()
-                    if len(file_content) > 5 * 1024 * 1024:  # 5MB limit
-                        raise ValueError(f"File too large: {filename}")
+                    if file.content_length > config['storage']['max_file_size']:
+                        raise ValueError(f"File too large: {file.filename}")
                     
-                    # Convert to base64
-                    image_data = base64.b64encode(file_content).decode('utf-8')
-                    
-                    # Add to images list
+                    # Save image and store metadata
+                    relative_path = save_image(file, config)
                     images_data.append({
-                        'name': filename,
-                        'data': image_data
+                        'name': file.filename,
+                        'path': relative_path
                     })
             
-            # Create new artifact
+            # Create artifact with image metadata
             artifact = Artifact(
-                name=name,
-                type_id=type_id,
-                content=content,
+                name=request.form['name'],
+                type_id=request.form['artifact_type'],
+                content=request.form['content'],
                 expiry_date=expiry_date,
                 images=images_data
             )
             
-            # Save to database
             session.add(artifact)
             session.commit()
-
+            
             flash('Artifact created successfully!', 'success')
             return redirect(url_for('index'))
             
-        except ValueError as ve:
-            flash(str(ve), 'error')
-            session.rollback()
         except Exception as e:
-            flash('An error occurred while creating the artifact.', 'error')
+            # Delete any saved images if artifact creation fails
+            for image in images_data:
+                delete_image(image['path'])
+            flash(str(e), 'error')
             session.rollback()
-            app.logger.error(f"Error creating artifact: {str(e)}")
     
     # GET request - show form
     types = session.query(Type).all()
@@ -180,10 +172,14 @@ def add_artifact():
 
 @app.route('/delete/<int:artifact_id>', methods=['POST'])
 def delete_artifact(artifact_id):
-    artifact = session.query(Artifact).filter(Artifact.id==artifact_id).first()
-    #session.delete(artifact)
-    #session.commit()
-    flash('Artifact deleted successfully!', 'success')
+    artifact = session.query(Artifact).get(artifact_id)
+    if artifact:
+        # Delete associated images
+        for image in artifact.images:
+            delete_image(image['path'])
+        
+        session.delete(artifact)
+        session.commit()
     return redirect(url_for('index'))
 
 @app.route('/update/<int:artifact_id>', methods=['GET', 'POST'])
@@ -209,70 +205,40 @@ def update_artifact(artifact_id):
                 # Convert to list if it's not already
                 artifact.images = list(artifact.images)
 
-            # Handle removed images first
+            # Handle removed images
             removed_images = request.form.get('removed_images', '').split(',')
-            if removed_images[0]:  # Check if there are actually removed images
-                # Create new list without removed images
-                artifact.images = [img for img in artifact.images 
-                                 if img['name'] not in removed_images]
+            if removed_images[0]:
+                for img in artifact.images[:]:
+                    if img['name'] in removed_images:
+                        delete_image(img['path'])
+                        artifact.images.remove(img)
 
             # Handle new images
             files = request.files.getlist('images[]')
-            new_images = []
-            
             for file in files:
                 if file and file.filename:
-                    # Security check
-                    filename = secure_filename(file.filename)
-                    
-                    # Skip if image with same name already exists
-                    if any(img['name'] == filename for img in artifact.images):
-                        continue
-                    
-                    # Validate file type
                     if not file.content_type.startswith('image/'):
-                        raise ValueError(f"Invalid file type: {filename}")
+                        raise ValueError(f"Invalid file type: {file.filename}")
                     
-                    try:
-                        # Read and validate file content
-                        file_content = file.read()
-                        if len(file_content) > 5 * 1024 * 1024:  # 5MB limit
-                            raise ValueError(f"File too large: {filename}")
-                        
-                        # Convert to base64
-                        image_data = base64.b64encode(file_content).decode('utf-8')
-                        
-                        # Add to new images list
-                        new_images.append({
-                            'name': filename,
-                            'data': image_data
-                        })
-                    except Exception as e:
-                        app.logger.error(f"Error processing file {filename}: {str(e)}")
-                        raise ValueError(f"Error processing file {filename}")
-
-            # Update artifact's images - combine existing with new
-            if new_images:
-                artifact.images.extend(new_images)
-
-            # Explicitly mark as modified
-            session.add(artifact)
-            session.flush()  # Flush changes to get any DB errors before commit
+                    if file.content_length > config['storage']['max_file_size']:
+                        raise ValueError(f"File too large: {file.filename}")
+                    
+                    # Save new image
+                    relative_path = save_image(file, config)
+                    artifact.images.append({
+                        'name': file.filename,
+                        'path': relative_path
+                    })
             
-            # Commit all changes
+            session.add(artifact)
             session.commit()
             
             flash('Artifact updated successfully!', 'success')
             return redirect(url_for('index'))
             
-        except ValueError as ve:
-            flash(str(ve), 'error')
-            session.rollback()
         except Exception as e:
-            flash(f'Error updating artifact: {str(e)}', 'error')
+            flash(str(e), 'error')
             session.rollback()
-            app.logger.error(f"Error updating artifact: {str(e)}")
-            return redirect(url_for('update_artifact', artifact_id=artifact_id))
 
     types = session.query(Type).all()
     return render_template('update_artifact.html', artifact=artifact, types=types)
@@ -317,6 +283,11 @@ def artifact_detail(artifact_id):
                          status_text=status_text,
                          status_icon=status_icon,
                          config=config)
+
+
+@app.route('/app/instance/static/uploads/<path:filename>')
+def serve_image(filename):
+    return send_from_directory(config['storage']['image_path'], filename)
 
 # All routes are defined above. The following runs the app if executed directly.
 if __name__ == '__main__':

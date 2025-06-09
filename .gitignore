@@ -32,7 +32,7 @@ venv.bak/
 # Flask
 instance/
 .webassets-cache
-#data.db
+static
 
 # VS Code
 .vscode/

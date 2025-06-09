@@ -7,7 +7,7 @@ class Artifact(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String, nullable=False)
     content = Column(Text, nullable=False)
-    images = Column(JSON, nullable=True)  # Store array of image objects
+    images = Column(JSON, default=list)  # Will store list of {name: filename, path: relative_path}
     type_id = Column(Integer, ForeignKey('type.id'))
     expiry_date = Column(Date, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow())

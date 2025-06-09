@@ -19,7 +19,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Create instance directory for database
-RUN mkdir -p /app/instance
+RUN mkdir -p /app/db
 
 # Expose port
 EXPOSE 2222

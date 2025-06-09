@@ -6,7 +6,7 @@ services:
     ports:
       - "2222:2222"
     volumes:
-      - ./db:/app/instance
+      - ./:/app
     environment:
       - FLASK_ENV=production
       - SECRET_KEY=your-super-secret-key-change-this-in-production
