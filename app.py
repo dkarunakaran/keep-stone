@@ -285,7 +285,7 @@ def artifact_detail(artifact_id):
                          config=config)
 
 
-@app.route('/app/instance/static/uploads/<path:filename>')
+@app.route('/static/uploads/<path:filename>')
 def serve_image(filename):
     return send_from_directory(config['storage']['image_path'], filename)
 
