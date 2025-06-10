@@ -1,6 +1,6 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Date, DateTime, Text, JSON
+from sqlalchemy import Column, Integer, String, ForeignKey, Date, DateTime, Text, JSON, Boolean
 from .base import Base
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 class Artifact(Base):
     __tablename__ = 'artifact'
@@ -13,6 +13,9 @@ class Artifact(Base):
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow())
     last_notification_sent = Column(DateTime, nullable=True)
     notification_count = Column(Integer, default=0)
+    deleted = Column(Boolean, default=False)
+    deleted_at = Column(DateTime, nullable=True)
+
 
     def is_expired(self):
         expiry_date = None
@@ -55,3 +58,15 @@ class Artifact(Base):
     def is_token(self):
         """Check if artifact is a token"""
         return self.type_id == 1  # Assuming 1 is Token type_id
+    
+    def soft_delete(self):
+        """Soft delete the artifact"""
+        self.deleted = True
+        self.deleted_at = datetime.utcnow()
+
+    def is_ready_for_cleanup(self, config):
+        """Check if artifact is ready for permanent deletion"""
+        if not self.deleted or not self.deleted_at:
+            return False
+        cleanup_threshold = datetime.utcnow() - timedelta(hours=config['storage'].get('cleanup_threshold_hours', 24))
+        return self.deleted_at <= cleanup_threshold
