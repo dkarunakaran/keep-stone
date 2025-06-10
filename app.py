@@ -76,7 +76,7 @@ def index():
         query = query.filter(Artifact.type_id == type_filter)
     
     # Get final results
-    artifacts = query.order_by(Artifact.expiry_date.asc()).all()
+    artifacts = query.order_by(Artifact.expiry_date.asc()).filter(Artifact.deleted == False).all()
     
     # Get types for dropdown
     types = session.query(Type).all()
@@ -156,12 +156,10 @@ def add_artifact():
 def delete_artifact(artifact_id):
     artifact = session.query(Artifact).get(artifact_id)
     if artifact:
-        # Delete associated images
-        for image in artifact.images:
-            delete_image(image['path'])
-        
-        session.delete(artifact)
+        # Soft delete instead of hard delete
+        artifact.soft_delete()
         session.commit()
+        flash('Artifact has been moved to trash', 'info')
     return redirect(url_for('index'))
 
 @app.route('/update/<int:artifact_id>', methods=['GET', 'POST'])

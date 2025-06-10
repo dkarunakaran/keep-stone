@@ -58,7 +58,7 @@
         margin: 2rem 0;
     }
 
-    .image-gallery {
+   .image-gallery {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
         gap: 1rem;
@@ -66,9 +66,11 @@
     }
 
     .image-card {
+        position: relative;
         border-radius: 0.5rem;
         overflow: hidden;
         background: white;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         transition: transform 0.2s;
     }
 
@@ -76,10 +78,30 @@
         transform: translateY(-2px);
     }
 
+    .image-card a {
+        display: block;
+        aspect-ratio: 16/9;
+        overflow: hidden;
+    }
+
     .image-card img {
         width: 100%;
-        height: 200px;
+        height: 100%;
         object-fit: cover;
+        transition: transform 0.3s;
+    }
+
+    .image-card:hover img {
+        transform: scale(1.05);
+    }
+
+    /* Fancybox custom styles */
+    .fancybox__container {
+        --fancybox-bg: rgba(24, 24, 27, 0.98);
+    }
+
+    .fancybox__toolbar {
+        --fancybox-accent: #6366f1;
     }
 
     .image-name {
@@ -245,11 +267,12 @@
         <div class="image-gallery">
             {% for image in artifact.images %}
             <div class="image-card">
-                <a href="data:image/jpeg;base64,{{ image.data }}"
-                   data-fancybox="gallery"
-                   data-caption="{{ image.name }}">
+                <a href="{{ url_for('static', filename=image.path.replace('static/', '')) }}"
+                data-fancybox="gallery"
+                data-caption="{{ image.name }}">
                     <img src="{{ url_for('static', filename=image.path.replace('static/', '')) }}" 
-                        alt="{{ image.name }}">
+                        alt="{{ image.name }}"
+                        loading="lazy">
                 </a>
                 <div class="image-name text-truncate" title="{{ image.name }}">
                     {{ image.name }}
@@ -324,25 +347,36 @@
 {{ super() }}
 <script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.umd.js"></script>
 <script>
-    Fancybox.bind("[data-fancybox]", {
+    Fancybox.bind('[data-fancybox="gallery"]', {
+        dragToClose: false,
+        
+        Toolbar: {
+            display: {
+                left: ['infobar'],
+                middle: ['zoomIn', 'zoomOut', 'toggle1to1', 'rotateCCW', 'rotateCW', 'flipX', 'flipY'],
+                right: ['slideshow', 'thumbs', 'close']
+            }
+        },
+
         Images: {
             zoom: true,
         },
-        Toolbar: {
-            display: {
-                left: ["prev", "counter", "next"],
-                middle: [],
-                right: ["zoom", "slideshow", "fullscreen", "close"],
-            },
-        },
+
         Thumbs: {
             autoStart: true,
         },
+
+        Carousel: {
+            transition: 'slide',
+        },
+
         Image: {
-            fit: "contain",
-            click: "close",
-            wheel: "slide",
-        }
+            click: 'toggleZoom',
+            wheel: 'zoom',
+            fit: 'contain',
+            zoom: true,
+            ratio: 16/9,
+        },
     });
 </script>
 {% endblock %}

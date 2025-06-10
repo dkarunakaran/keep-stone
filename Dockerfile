@@ -24,7 +24,7 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Setup crontab
+# Setup crontab - every 3 hours
 RUN echo "0 */3 * * * /usr/local/bin/python /app/scheduler.py >> /var/log/keepstone/scheduler.cron.log 2>&1" > /etc/cron.d/keepstone-cron
 RUN chmod 0644 /etc/cron.d/keepstone-cron
 RUN crontab /etc/cron.d/keepstone-cron
