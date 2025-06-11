@@ -204,6 +204,39 @@
         color: rgba(255, 255, 255, 0.9); /* Slightly transparent white for icon */
     }
 
+        .image-name {
+        padding: 0.75rem;
+        font-size: 0.875rem;
+        color: #4b5563;
+        text-align: center;
+        border-top: 1px solid #f3f4f6;
+        line-height: 1.4;
+    }
+
+    .image-name strong {
+        color: #1f2937;
+        font-weight: 600;
+    }
+
+    /* Add better spacing for figure labels */
+    .image-card {
+        position: relative;
+        border-radius: 0.5rem;
+        overflow: hidden;
+        background: white;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        transition: transform 0.2s;
+        border: 1px solid #e5e7eb;
+    }
+
+    /* Fancybox caption styling */
+    .fancybox__caption {
+        font-size: 1rem;
+        color: #fff;
+        background: rgba(0, 0, 0, 0.8);
+        padding: 1rem;
+    }
+
 </style>
 {% endblock %}
 
@@ -269,13 +302,13 @@
             <div class="image-card">
                 <a href="{{ url_for('static', filename=image.path.replace('static/', '')) }}"
                 data-fancybox="gallery"
-                data-caption="{{ image.name }}">
+                data-caption="Figure {{ loop.index }}: {{ image.name }}">
                     <img src="{{ url_for('static', filename=image.path.replace('static/', '')) }}" 
-                        alt="{{ image.name }}"
+                        alt="Figure {{ loop.index }}: {{ image.name }}"
                         loading="lazy">
                 </a>
-                <div class="image-name text-truncate" title="{{ image.name }}">
-                    {{ image.name }}
+                <div class="image-name text-truncate" title="Figure {{ loop.index }}: {{ image.name }}">
+                    <strong>Figure {{ loop.index }}:</strong> {{ image.name }}
                 </div>
             </div>
             {% endfor %}
@@ -322,6 +355,12 @@
     </div>
     {% endif %}
     <div class="floating-actions">
+        <a href="{{ url_for('export_artifact_pdf', artifact_id=artifact.id) }}" 
+            class="btn btn-outline-primary action-button" 
+            title="Export as PDF">
+            <i class="fas fa-file-pdf"></i>
+            Export PDF
+        </a>
         <a href="{{ url_for('update_artifact', artifact_id=artifact.id) }}" 
            class="btn btn-primary action-button">
             <i class="fas fa-edit"></i>
