@@ -132,9 +132,9 @@
                                     <i class="far fa-calendar me-1"></i>
                                     {{ artifact.expiry_date.strftime('%b %d, %Y') }}
                                     {% if days_until_expiry <= 14 and not artifact.is_expired() %}
-                                        <span class="text-warning">({{ days_until_expiry }}d left)</span>
+                                        <span class="text-warning" style="font-size: 0.75rem;">({{ days_until_expiry }}d left)</span>
                                     {% elif artifact.is_expired() %}
-                                        <span class="text-danger">(Expired)</span>
+                                        <span class="text-danger" style="font-size: 0.75rem;">(Expired)</span>
                                     {% endif %}
                                 {% else %}
                                     <i class="far fa-clock me-1"></i>
@@ -142,6 +142,10 @@
                                 {% endif %}
                             </small>
                             <div class="btn-group action-buttons">
+                                <button type="button" class="btn btn-icon btn-light" title="Export PDF"
+                                    onclick="handleAction(event, '{{ url_for('export_artifact_pdf', artifact_id=artifact.id) }}')">
+                                    <i class="fas fa-file-pdf"></i>
+                                </button>
                                 <button type="button" class="btn btn-icon btn-light" title="Edit"
                                         onclick="handleAction(event, '{{ url_for('update_artifact', artifact_id=artifact.id) }}')">
                                     <i class="fas fa-edit"></i>

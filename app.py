@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, make_response, abort
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, date
 import os
@@ -14,6 +14,21 @@ from flask import send_from_directory
 import atexit
 from utility import save_image, delete_image
 from dotenv import load_dotenv
+
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage, PageBreak, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch, cm
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_JUSTIFY, TA_CENTER, TA_LEFT
+from reportlab.platypus.flowables import HRFlowable
+import io
+import os
+import markdown
+import re
+from PIL import Image as PILImage
+from datetime import datetime
+
 import sys
 parent_dir = ".."
 sys.path.append(parent_dir)
@@ -271,6 +286,340 @@ def artifact_detail(artifact_id):
 @app.route('/static/uploads/<path:filename>')
 def serve_image(filename):
     return send_from_directory(config['storage']['image_path'], filename)
+
+def clean_markdown_for_pdf(text):
+    """Convert markdown to PDF-friendly text with basic formatting"""
+    if not text:
+        return ""
+    
+    # Convert markdown to HTML first
+    html = markdown.markdown(text, extensions=['tables', 'fenced_code'])
+    
+    # Clean HTML tags for reportlab
+    html = re.sub(r'<h1>(.*?)</h1>', r'<para fontSize="18" spaceAfter="12"><b>\1</b></para>', html)
+    html = re.sub(r'<h2>(.*?)</h2>', r'<para fontSize="16" spaceAfter="10"><b>\1</b></para>', html)
+    html = re.sub(r'<h3>(.*?)</h3>', r'<para fontSize="14" spaceAfter="8"><b>\1</b></para>', html)
+    html = re.sub(r'<h4>(.*?)</h4>', r'<para fontSize="12" spaceAfter="6"><b>\1</b></para>', html)
+    html = re.sub(r'<strong>(.*?)</strong>', r'<b>\1</b>', html)
+    html = re.sub(r'<em>(.*?)</em>', r'<i>\1</i>', html)
+    html = re.sub(r'<code>(.*?)</code>', r'<font name="Courier">\1</font>', html)
+    html = re.sub(r'<pre><code>(.*?)</code></pre>', r'<para backColor="#f0f0f0" borderPadding="10"><font name="Courier">\1</font></para>', html, flags=re.DOTALL)
+    html = re.sub(r'<blockquote>(.*?)</blockquote>', r'<para leftIndent="20" borderWidth="2" borderColor="#3498db" borderPadding="10"><i>\1</i></para>', html, flags=re.DOTALL)
+    html = re.sub(r'<ul>', '', html)
+    html = re.sub(r'</ul>', '', html)
+    html = re.sub(r'<ol>', '', html)
+    html = re.sub(r'</ol>', '', html)
+    html = re.sub(r'<li>(.*?)</li>', r'• \1<br/>', html)
+    html = re.sub(r'<p>(.*?)</p>', r'<para spaceAfter="10">\1</para>', html, flags=re.DOTALL)
+    html = re.sub(r'<br\s*/?>', '<br/>', html)
+    
+    # Remove any remaining HTML tags
+    html = re.sub(r'<[^>]+>', '', html)
+    
+    return html
+
+@app.route('/artifact/<int:artifact_id>/export/pdf')
+def export_artifact_pdf(artifact_id):
+    artifact = session.query(Artifact).filter_by(id=artifact_id).first()
+    if not artifact:
+        abort(404)
+    
+    try:
+        # Create PDF buffer
+        buffer = io.BytesIO()
+        
+        # Create PDF document
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=A4,
+            rightMargin=2*cm,
+            leftMargin=2*cm,
+            topMargin=2*cm,
+            bottomMargin=2*cm
+        )
+        
+        # Get sample styles
+        styles = getSampleStyleSheet()
+
+        # Define custom styles
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Title'],
+            fontSize=24,
+            textColor=colors.HexColor('#2c3e50'),
+            alignment=TA_CENTER,
+            spaceAfter=30,
+            fontName='Helvetica-Bold'
+        )
+        
+        type_style = ParagraphStyle(
+            'TypeBadge',
+            parent=styles['Normal'],
+            fontSize=12,
+            textColor=colors.white,
+            backColor=colors.HexColor('#3498db'),
+            alignment=TA_CENTER,
+            borderPadding=8,
+            spaceAfter=20,
+            fontName='Helvetica-Bold'
+        )
+        
+        meta_style = ParagraphStyle(
+            'MetaInfo',
+            parent=styles['Normal'],
+            fontSize=11,
+            textColor=colors.HexColor('#666666'),
+            spaceAfter=15,
+            fontName='Helvetica'
+        )
+
+        content_style = ParagraphStyle(
+            'ContentStyle',
+            parent=styles['Normal'],
+            fontSize=12,
+            alignment=TA_JUSTIFY,
+            spaceAfter=12,
+            leading=18,
+            fontName='Times-Roman'
+        )
+        
+        heading_style = ParagraphStyle(
+            'HeadingStyle',
+            parent=styles['Heading2'],
+            fontSize=16,
+            textColor=colors.HexColor('#2c3e50'),
+            spaceAfter=12,
+            spaceBefore=20,
+            fontName='Helvetica-Bold'
+        )
+        
+        warning_style = ParagraphStyle(
+            'WarningStyle',
+            parent=styles['Normal'],
+            fontSize=12,
+            textColor=colors.white,
+            backColor=colors.HexColor('#f39c12'),
+            alignment=TA_CENTER,
+            borderPadding=10,
+            spaceAfter=20,
+            fontName='Helvetica-Bold'
+        )
+
+        expired_style = ParagraphStyle(
+            'ExpiredStyle',
+            parent=styles['Normal'],
+            fontSize=12,
+            textColor=colors.white,
+            backColor=colors.HexColor('#e74c3c'),
+            alignment=TA_CENTER,
+            borderPadding=10,
+            spaceAfter=20,
+            fontName='Helvetica-Bold'
+        )
+        
+        # Build PDF content
+        story = []
+        
+        # Title
+        story.append(Paragraph(artifact.name, title_style))
+        
+        # Horizontal line after title
+        story.append(HRFlowable(width="100%", thickness=2, color=colors.HexColor('#2c3e50')))
+        story.append(Spacer(1, 20))
+
+        # Type badge
+        artifact_type = session.query(Type).filter_by(id=artifact.type_id).first()
+        if artifact_type:
+            story.append(Paragraph(f"Type: {artifact_type.name}", type_style))
+        
+        # Meta information table
+        meta_data = []
+        created_date = artifact.created_at.strftime("%B %d, %Y at %I:%M %p")
+        meta_data.append(['Created:', created_date])
+        
+        if artifact.expiry_date:
+            expiry_date = artifact.expiry_date.strftime("%B %d, %Y")
+            days_remaining = (artifact.expiry_date - datetime.now().date()).days
+            meta_data.append(['Expires:', expiry_date])
+            meta_data.append(['Days Remaining:', str(days_remaining)])
+        
+        # Create meta info table
+        meta_table = Table(meta_data, colWidths=[3*cm, 10*cm])
+        meta_table.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+            ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 11),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#666666')),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ]))
+        
+        story.append(meta_table)
+        story.append(Spacer(1, 20))
+        
+        # Expiry warning if applicable
+        if artifact.expiry_date:
+            days_remaining = (artifact.expiry_date - datetime.now().date()).days
+            if days_remaining < 0:
+                story.append(Paragraph("⚠️ THIS ARTIFACT HAS EXPIRED", expired_style))
+            elif days_remaining <= 7:
+                story.append(Paragraph(f"⚠️ EXPIRES IN {days_remaining} DAYS", warning_style))
+        
+        # Content section
+        if artifact.content:
+            story.append(Paragraph("Content", heading_style))
+            story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#bdc3c7')))
+            story.append(Spacer(1, 15))
+            
+            # Process content
+            cleaned_content = clean_markdown_for_pdf(artifact.content)
+            
+            # Split into paragraphs and add to story
+            paragraphs = cleaned_content.split('\n')
+            for para in paragraphs:
+                para = para.strip()
+                if para:
+                    try:
+                        story.append(Paragraph(para, content_style))
+                    except:
+                        # Fallback for problematic content
+                        story.append(Paragraph(para.encode('ascii', 'ignore').decode('ascii'), content_style))
+
+        # Images section
+        if artifact.images:
+            story.append(PageBreak())
+            story.append(Paragraph("Images", heading_style))
+            story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#bdc3c7')))
+            story.append(Spacer(1, 15))
+            
+            for i, image_data in enumerate(artifact.images):
+                # The path is already complete from the root directory
+                # Remove 'static/' prefix if it exists since we need the file system path
+                image_relative_path = image_data['path']
+                if image_relative_path.startswith('static/'):
+                    image_relative_path = image_relative_path[7:]  # Remove 'static/' prefix
+                
+                # Construct the full file system path
+                image_path = os.path.join(os.path.dirname(__file__), 'static', image_relative_path)
+                
+                try:
+                    # Check if image file exists
+                    if not os.path.exists(image_path):
+                        error_style = ParagraphStyle(
+                            'ErrorStyle',
+                            parent=styles['Normal'],
+                            fontSize=10,
+                            textColor=colors.HexColor('#e74c3c'),
+                            alignment=TA_CENTER,
+                            spaceAfter=15
+                        )
+                        story.append(Paragraph(f"Image not found: {image_data['name']} (Path: {image_path})", error_style))
+                        continue
+                    
+                    # Open image with PIL to get dimensions
+                    with PILImage.open(image_path) as pil_img:
+                        img_width, img_height = pil_img.size
+                        
+                        # Calculate scaling to fit page width (max 15cm)
+                        max_width = 15*cm
+                        max_height = 10*cm
+                        
+                        # Calculate aspect ratio
+                        aspect_ratio = img_width / img_height
+
+                        if img_width > img_height:
+                            # Landscape orientation
+                            new_width = min(max_width, img_width * 72 / 96)  # Convert pixels to points
+                            new_height = new_width / aspect_ratio
+                        else:
+                            # Portrait orientation
+                            new_height = min(max_height, img_height * 72 / 96)
+                            new_width = new_height * aspect_ratio
+                        
+                        # Ensure image doesn't exceed page dimensions
+                        if new_width > max_width:
+                            new_width = max_width
+                            new_height = new_width / aspect_ratio
+                        if new_height > max_height:
+                            new_height = max_height
+                            new_width = new_height * aspect_ratio
+                    
+                    # Create reportlab image
+                    img = RLImage(image_path, width=new_width, height=new_height)
+                    
+                    # Center the image
+                    img.hAlign = 'CENTER'
+                    
+                    story.append(img)
+                    
+                    # Add image caption
+                    caption_style = ParagraphStyle(
+                        'Caption',
+                        parent=styles['Normal'],
+                        fontSize=10,
+                        textColor=colors.HexColor('#666666'),
+                        alignment=TA_CENTER,
+                        spaceAfter=20,
+                        fontName='Helvetica-Oblique'
+                    )
+                    story.append(Paragraph(f"Figure {i+1}: {image_data['name']}", caption_style))
+                    
+                    if i < len(artifact.images) - 1:
+                        story.append(Spacer(1, 20))
+
+                except Exception as e:
+                    # If image processing fails, add a note
+                    error_style = ParagraphStyle(
+                        'ErrorStyle',
+                        parent=styles['Normal'],
+                        fontSize=10,
+                        textColor=colors.HexColor('#e74c3c'),
+                        alignment=TA_CENTER,
+                        spaceAfter=15
+                    )
+                    story.append(Paragraph(f"Could not load image: {image_data['name']} - {str(e)}", error_style))
+        
+        # Footer information
+        story.append(PageBreak())
+        footer_style = ParagraphStyle(
+            'FooterStyle',
+            parent=styles['Normal'],
+            fontSize=10,
+            textColor=colors.HexColor('#666666'),
+            alignment=TA_CENTER,
+            spaceAfter=10
+        )
+        
+        story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#bdc3c7')))
+        story.append(Spacer(1, 20))
+        story.append(Paragraph("Generated by KeepStone", footer_style))
+        story.append(Paragraph(f"Export Date: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}", footer_style))
+        
+        # Build PDF
+        doc.build(story)
+
+        # Get PDF data
+        pdf_data = buffer.getvalue()
+        buffer.close()
+        
+        # Create response
+        response = make_response(pdf_data)
+        response.headers['Content-Type'] = 'application/pdf'
+        
+        # Clean filename for download
+        safe_filename = re.sub(r'[^\w\s-]', '', artifact.name.strip())
+        safe_filename = re.sub(r'[-\s]+', '_', safe_filename)
+        
+        response.headers['Content-Disposition'] = f'attachment; filename="{safe_filename}.pdf"'
+        
+        return response
+        
+    except Exception as e:
+        app.logger.error(f"PDF export error: {str(e)}")
+        flash(f'Error generating PDF: {str(e)}', 'error')
+        return redirect(url_for('artifact_detail', artifact_id=artifact_id))
+
+
 
 # All routes are defined above. The following runs the app if executed directly.
 if __name__ == '__main__':
