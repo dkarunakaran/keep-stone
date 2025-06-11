@@ -13,6 +13,7 @@ from email_utils import check_expiring_tokens
 from flask import send_from_directory
 import atexit
 from utility import save_image, delete_image
+from dotenv import load_dotenv
 import sys
 parent_dir = ".."
 sys.path.append(parent_dir)
@@ -24,8 +25,10 @@ import models.type
 import sys
 sys.path.append('/app')
 
+load_dotenv()
+
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key-here'
+app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY')
 
 # Create instance directory if it doesn't exist
 instance_path = '/app/instance'
