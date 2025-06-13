@@ -8,6 +8,7 @@ from models.base import engine
 from models.artifact import Artifact
 from utility import delete_image
 from email_utils import check_expiring_tokens
+from config_utils import load_config
 
 # Set up logging
 logging.basicConfig(
@@ -20,9 +21,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 Session = sessionmaker(bind=engine)
 
-# Load configuration
-with open('/app/config.yaml', 'r') as f:
-    config = yaml.safe_load(f)
+# Load config from database instead of YAML
+config = load_config()
 
 def cleanup_deleted_artifacts(session):
     """Delete artifacts that were soft-deleted"""
