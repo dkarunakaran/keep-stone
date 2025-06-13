@@ -2,14 +2,17 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, date
 import os
-import utils.utility as utility
+import utility
+import yaml
 from sqlalchemy.orm import sessionmaker
 import base64
+from werkzeug.utils import secure_filename
 from markdown2 import Markdown
 from flask import send_from_directory
-from utils.utility import save_image, delete_image
-from utils.config_utils import load_config, update_config, get_config_for_settings, get_section_title, get_section_icon
+from utility import save_image, delete_image
 from dotenv import load_dotenv
+from utils.config_utils import load_config, update_config, get_config_for_settings, get_section_title, get_section_icon, reset_config_to_defaults
+
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage, PageBreak, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -31,7 +34,7 @@ sys.path.append(parent_dir)
 import models.base
 import models.artifact
 import models.type
-import models.config  # Add this import
+import models.config
 
 # Fix for template rendering
 import sys
@@ -46,8 +49,16 @@ app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY')
 instance_path = '/app/instance'
 os.makedirs(instance_path, exist_ok=True)
 
+# Declare config as global at module level
+config = None
+
 # Load config from database instead of YAML
-config = load_config()
+def initialize_config():
+    global config
+    config = load_config()
+
+# Initialize config
+initialize_config()
 
 # Create database if it doesn't exist
 utility.create_database(config=config)
@@ -61,7 +72,6 @@ Type = models.type.Type
 def inject_date():
     return {'today': date.today()}
 
-# Make helper functions available in templates
 @app.context_processor
 def inject_helpers():
     return dict(
@@ -71,10 +81,6 @@ def inject_helpers():
         config=config
     )
 
-@app.context_processor
-def utility_processor():
-    return dict(config=config)
-
 # Create markdown renderer
 markdowner = Markdown(extras=["tables", "fenced-code-blocks"])
 
@@ -82,14 +88,33 @@ markdowner = Markdown(extras=["tables", "fenced-code-blocks"])
 def markdown_filter(text):
     return markdowner.convert(text)
 
-
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():
+    global config
+    
     if request.method == 'POST':
+        # Check if this is a reset request
+        if 'reset_defaults' in request.form:
+            try:
+                if reset_config_to_defaults():
+                    flash('Configuration reset to default values successfully!', 'success')
+                    # Reload config
+                    config = load_config()
+                else:
+                    flash('Error resetting configuration to defaults.', 'error')
+            except Exception as e:
+                flash(f'Error resetting configuration: {str(e)}', 'error')
+            
+            return redirect(url_for('settings'))
+        
+        # Normal settings update
         try:
             # Get all form data
             updates = {}
             for key in request.form:
+                if key == 'reset_defaults':  # Skip reset button
+                    continue
+                    
                 value = request.form[key]
                 
                 # Convert values to appropriate types based on key patterns
@@ -112,12 +137,11 @@ def settings():
             if success_count > 0:
                 flash(f'Successfully updated {success_count} configuration(s)!', 'success')
                 # Reload config
-                global config
                 config = load_config()
             else:
                 flash('No configurations were updated.', 'error')
                 
-        except Exception as e:
+        except Exception as e:      
             flash(f'Error updating configuration: {str(e)}', 'error')
         
         return redirect(url_for('index'))
@@ -125,7 +149,6 @@ def settings():
     # Get all config items for display
     config_items = get_config_for_settings()
     return render_template('settings.html', config_items=config_items)
-
 
 @app.route('/')
 def index():
