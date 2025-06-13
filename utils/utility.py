@@ -3,7 +3,7 @@ from sqlalchemy import and_
 import os
 from werkzeug.utils import secure_filename
 import uuid
-from config_utils import initialize_config_table
+from utils.config_utils import initialize_config_table
 import sys
 parent_dir = ".."
 sys.path.append(parent_dir)
