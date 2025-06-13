@@ -2,20 +2,14 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, date
 import os
-import utility
-import yaml
+import utils.utility as utility
 from sqlalchemy.orm import sessionmaker
 import base64
-from werkzeug.utils import secure_filename
 from markdown2 import Markdown
-import pytz
-from email_utils import check_expiring_tokens
 from flask import send_from_directory
-import atexit
-from utility import save_image, delete_image
+from utils.utility import save_image, delete_image
+from utils.config_utils import load_config, update_config, get_config_for_settings, get_section_title, get_section_icon
 from dotenv import load_dotenv
-from config_utils import load_config, update_config, get_config_for_settings, get_section_title, get_section_icon
-
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage, PageBreak, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
