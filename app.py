@@ -2,19 +2,14 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, date
 import os
-import utility
-import yaml
+import utils.utility as utility
 from sqlalchemy.orm import sessionmaker
 import base64
-from werkzeug.utils import secure_filename
 from markdown2 import Markdown
-import pytz
-from email_utils import check_expiring_tokens
 from flask import send_from_directory
-import atexit
-from utility import save_image, delete_image
+from utils.utility import save_image, delete_image
+from utils.config_utils import load_config, update_config, get_config_for_settings, get_section_title, get_section_icon
 from dotenv import load_dotenv
-
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage, PageBreak, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -27,6 +22,7 @@ import os
 import markdown
 import re
 from PIL import Image as PILImage
+
 from datetime import datetime
 
 import sys
@@ -35,6 +31,7 @@ sys.path.append(parent_dir)
 import models.base
 import models.artifact
 import models.type
+import models.config  # Add this import
 
 # Fix for template rendering
 import sys
@@ -49,8 +46,8 @@ app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY')
 instance_path = '/app/instance'
 os.makedirs(instance_path, exist_ok=True)
 
-with open("config.yaml") as f:
-    config = yaml.load(f, Loader=yaml.FullLoader)
+# Load config from database instead of YAML
+config = load_config()
 
 # Create database if it doesn't exist
 utility.create_database(config=config)
@@ -62,11 +59,21 @@ Type = models.type.Type
 # Make date available in templates
 @app.context_processor
 def inject_date():
-    return dict(date=date)
+    return {'today': date.today()}
+
+# Make helper functions available in templates
+@app.context_processor
+def inject_helpers():
+    return dict(
+        get_section_title=get_section_title,
+        get_section_icon=get_section_icon,
+        today=date.today(),
+        config=config
+    )
 
 @app.context_processor
 def utility_processor():
-    return dict(timezone=pytz.timezone)
+    return dict(config=config)
 
 # Create markdown renderer
 markdowner = Markdown(extras=["tables", "fenced-code-blocks"])
@@ -74,6 +81,51 @@ markdowner = Markdown(extras=["tables", "fenced-code-blocks"])
 @app.template_filter('markdown')
 def markdown_filter(text):
     return markdowner.convert(text)
+
+
+@app.route('/settings', methods=['GET', 'POST'])
+def settings():
+    if request.method == 'POST':
+        try:
+            # Get all form data
+            updates = {}
+            for key in request.form:
+                value = request.form[key]
+                
+                # Convert values to appropriate types based on key patterns
+                if key.endswith(('_port', '_size', '_days', '_hours', '_notifications', '_interval')) or key.split('.')[-1] in ['max_file_size', 'smtp_port', 'notification_days', 'max_notifications', 'notification_interval', 'cleanup_threshold_hours']:
+                    value = int(value)
+                elif value.lower() in ('true', 'false'):
+                    value = value.lower() == 'true'
+                elif key == 'type' or key.endswith('.allowed_extensions'):
+                    # Handle arrays
+                    value = [t.strip() for t in value.split(',') if t.strip()]
+                
+                updates[key] = value
+            
+            # Update each config item
+            success_count = 0
+            for key, value in updates.items():
+                if update_config(key, value):
+                    success_count += 1
+            
+            if success_count > 0:
+                flash(f'Successfully updated {success_count} configuration(s)!', 'success')
+                # Reload config
+                global config
+                config = load_config()
+            else:
+                flash('No configurations were updated.', 'error')
+                
+        except Exception as e:
+            flash(f'Error updating configuration: {str(e)}', 'error')
+        
+        return redirect(url_for('index'))
+    
+    # Get all config items for display
+    config_items = get_config_for_settings()
+    return render_template('settings.html', config_items=config_items)
+
 
 @app.route('/')
 def index():

@@ -269,6 +269,9 @@
         }
 
         .action-button {
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-weight: 500;
             transition: all 0.2s ease;
             min-width: 100px;
             display: inline-flex;
@@ -300,7 +303,7 @@
                 <a class="nav-link" href="{{ url_for('index') }}">
                     <i class="fas fa-home me-2"></i>Dashboard
                 </a>
-                <a class="nav-link" href="{{ url_for('index') }}">
+                <a class="nav-link" href="{{ url_for('settings') }}">
                     <i class="fas fa-gear me-2"></i>Settings
                 </a>
             </div>
