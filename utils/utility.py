@@ -3,7 +3,7 @@ from sqlalchemy import and_
 import os
 from werkzeug.utils import secure_filename
 import uuid
-
+from utils.config_utils import initialize_config_table
 import sys
 parent_dir = ".."
 sys.path.append(parent_dir)
@@ -11,6 +11,7 @@ sys.path.append(parent_dir)
 import models.artifact
 import models.base
 import models.type
+import models.config
 
 def create_database(session=None, config=None):
     """
@@ -26,8 +27,8 @@ def create_database(session=None, config=None):
 
     # Insert Groups
     all_types= session.query(Type).all()
-    if len(all_types) < 1:
-        types = config['type']
+    if len(all_types) < 1 and config:
+        types = config.get('type', [])
             
         for name in types:
             # Create a new group object
@@ -36,7 +37,9 @@ def create_database(session=None, config=None):
             session.add(type)
             # Commit the changes to the database
             session.commit() 
-    
+
+    initialize_config_table()
+
     # Close the session if it was created here
     if session is not None:
         session.close()
