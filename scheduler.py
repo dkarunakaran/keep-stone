@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 from datetime import datetime, date
 from models.base import engine
 from models.artifact import Artifact
-from utils.utility import delete_image
+from utility import delete_image
 from utils.email_utils import check_expiring_tokens
 from utils.config_utils import load_config
 
