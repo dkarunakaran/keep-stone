@@ -74,6 +74,9 @@ def generate_config_description(key):
         'email.max_notifications': 'Maximum number of notifications per token',
         'email.notification_interval': 'Hours between notification attempts',
         'email.timezone': 'Timezone for date calculations',
+        
+        # General settings
+        'general.default_type': 'Default artifact type to pre-select when creating new artifacts',
     }
     
     return descriptions.get(key, f'Configuration setting for {key.replace(".", " ").title()}')
@@ -243,7 +246,10 @@ def get_config_for_settings():
             except (json.JSONDecodeError, TypeError):
                 config_dict['display_value'] = config.value
                 # Determine input type based on key and value
-                if config.key.endswith(('_port', '_size', '_days', '_hours', '_notifications', '_interval')):
+                if config.key == 'general.default_type':
+                    config_dict['input_type'] = 'select'
+                    config_dict['options'] = ['Token', 'Troubleshoot', 'Information', 'Other']
+                elif config.key.endswith(('_port', '_size', '_days', '_hours', '_notifications', '_interval')):
                     config_dict['input_type'] = 'number'
                 elif config.value.lower() in ('true', 'false'):
                     config_dict['input_type'] = 'boolean'
