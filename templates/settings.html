@@ -147,6 +147,12 @@
                         <option value="true" {% if item.display_value.lower() == 'true' %}selected{% endif %}>True</option>
                         <option value="false" {% if item.display_value.lower() == 'false' %}selected{% endif %}>False</option>
                     </select>
+                {% elif item.input_type == 'select' %}
+                    <select name="{{ item.key }}" class="config-input">
+                        {% for option in item.options %}
+                        <option value="{{ option }}" {% if item.display_value == option %}selected{% endif %}>{{ option }}</option>
+                        {% endfor %}
+                    </select>
                 {% else %}
                     <input type="text" 
                            name="{{ item.key }}" 

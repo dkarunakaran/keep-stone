@@ -56,6 +56,10 @@ config = None
 def initialize_config():
     global config
     config = load_config()
+    
+    # Ensure default_type configuration exists in database
+    from migrate_default_type import ensure_all_general_configs
+    ensure_all_general_configs()
 
 # Initialize config
 initialize_config()
@@ -152,20 +156,22 @@ def settings():
 
 @app.route('/')
 def index():
-    search_query = request.args.get('search', '')
     type_filter = request.args.get('type', '')  # Changed to empty string default
+    show_all = request.args.get('type') == 'all'
     
-    # Start with base query
+    # Get default type from config if no type filter is specified and not showing all
+    if not type_filter and not show_all:
+        default_type_name = config.get('general', {}).get('default_type', 'Token')
+        # Find the ID of the default type
+        default_type = session.query(Type).filter(Type.name == default_type_name).first()
+        if default_type:
+            type_filter = str(default_type.id)
+    
+    # Start with base query - no search filtering on index page
     query = session.query(Artifact)
     
-    # Apply search filter if present
-    if search_query:
-        name_results = query.filter(Artifact.name.ilike(f'%{search_query}%'))
-        content_results = query.filter(Artifact.content.ilike(f'%{search_query}%'))
-        query = name_results.union(content_results)
-    
-    # Apply type filter only if specifically selected
-    if type_filter:
+    # Apply type filter only if specifically selected and not showing all
+    if type_filter and not show_all:
         query = query.filter(Artifact.type_id == type_filter)
     
     # Get final results
@@ -176,6 +182,43 @@ def index():
     types_dict = {t.id: t.name for t in types}
     
     return render_template('index.html', 
+                         artifacts=artifacts,
+                         type_filter=type_filter if not show_all else '',
+                         show_all=show_all,
+                         today=date.today(),
+                         types=types,
+                         config=config,
+                         types_dict=types_dict)
+
+@app.route('/search')
+def search():
+    search_query = request.args.get('search', '').strip()
+    type_filter = request.args.get('type', '')
+    
+    # Start with base query
+    query = session.query(Artifact).filter(Artifact.deleted == False)
+    
+    # Apply search filter if present
+    if search_query:
+        name_results = query.filter(Artifact.name.ilike(f'%{search_query}%'))
+        content_results = query.filter(Artifact.content.ilike(f'%{search_query}%'))
+        query = name_results.union(content_results)
+    else:
+        # If no search query, return empty results to encourage searching
+        query = query.filter(Artifact.id == -1)  # This will return no results
+    
+    # Apply type filter only if specifically selected
+    if type_filter:
+        query = query.filter(Artifact.type_id == type_filter)
+    
+    # Get final results
+    artifacts = query.order_by(Artifact.expiry_date.asc()).all()
+    
+    # Get types for dropdown
+    types = session.query(Type).all()
+    types_dict = {t.id: t.name for t in types}
+    
+    return render_template('search.html', 
                          artifacts=artifacts,
                          search_query=search_query,
                          type_filter=type_filter,
@@ -243,7 +286,18 @@ def add_artifact():
     
     # GET request - show form
     types = session.query(Type).all()
-    return render_template('add_artifact.html', types=types)
+    
+    # Get default type from config
+    default_type_name = config.get('general', {}).get('default_type', 'Token')
+    default_type_id = None
+    
+    # Find the ID of the default type
+    for type_obj in types:
+        if type_obj.name == default_type_name:
+            default_type_id = type_obj.id
+            break
+    
+    return render_template('add_artifact.html', types=types, default_type_id=default_type_id)
 
 @app.route('/delete/<int:artifact_id>', methods=['POST'])
 def delete_artifact(artifact_id):
