@@ -29,6 +29,7 @@
             backdrop-filter: blur(20px);
             margin: 2rem auto;
             padding: 2rem;
+            min-height: 640px;
         }
 
         .token-card {
@@ -350,6 +351,16 @@
                                 {{ type_option.name }}
                             </option>
                             {% endfor %}
+                        </select>
+                        <select name="project" class="form-select border-start-0 border-end-0" style="max-width: 140px; border-radius: 0;">
+                            <option value="">All Projects</option>
+                            {% if projects %}
+                                {% for project in projects %}
+                                <option value="{{ project.id }}" {% if request.args.get('project') == project.id|string %}selected{% endif %}>
+                                    {% if project.is_default %}⭐ {% endif %}{{ project.name[:15] }}{% if project.name|length > 15 %}...{% endif %}
+                                </option>
+                                {% endfor %}
+                            {% endif %}
                         </select>
                         <button type="submit" class="btn btn-primary" style="border-radius: 0 0.75rem 0.75rem 0;">
                             <i class="fas fa-search"></i>
