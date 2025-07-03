@@ -29,12 +29,8 @@ def flatten_dict(d, parent_key='', sep='.'):
                         sub_key = f"{new_key}{sep}{sub_k}"
                         items.append((sub_key, sub_v, edit_flag))
             else:
-                # Regular nested dict or array at root level
-                if k == 'type':
-                    # Special handling for type array - no edit flag means not editable
-                    items.append((k, v, False))
-                else:
-                    items.extend(flatten_dict(v, new_key, sep=sep))
+                # Regular nested dict
+                items.extend(flatten_dict(v, new_key, sep=sep))
         else:
             # Simple value at root level - no edit flag means not editable
             items.append((new_key, v, False))
@@ -57,7 +53,7 @@ def generate_config_description(key):
     """Generate human-readable description for config keys"""
     descriptions = {
         # Storage
-        'storage.image_path': 'Directory path where uploaded images are stored [DO NOT CHANGE WITHOUT CREATING DIR]',
+        'storage.image_path': 'Directory path where uploaded images are stored',
         'storage.allowed_extensions': 'Allowed file extensions for image uploads',
         'storage.max_file_size': 'Maximum file size for uploads (in bytes)',
         'storage.cleanup_threshold_hours': 'Hours after which unused files are cleaned up',
@@ -72,15 +68,15 @@ def generate_config_description(key):
         'trim.extra': 'Extra characters allowed for display',
         
         # Email settings
-        'email.smtp_server': 'SMTP server hostname for email [ONLY SUPPORT GMAIL]',
+        'email.smtp_server': 'SMTP server hostname for email',
         'email.smtp_port': 'SMTP server port number',
         'email.notification_days': 'Days before expiry to send notifications',
         'email.max_notifications': 'Maximum number of notifications per token',
         'email.notification_interval': 'Hours between notification attempts',
         'email.timezone': 'Timezone for date calculations',
         
-        # Types
-        'type': 'Available artifact types (comma-separated)',
+        # General settings
+        'general.default_type': 'Default artifact type to pre-select when creating new artifacts',
     }
     
     return descriptions.get(key, f'Configuration setting for {key.replace(".", " ").title()}')
@@ -116,7 +112,7 @@ def initialize_config_table():
                     session.add(config_item)
             
             session.commit()
-            print("Config table initialized with editable YAML data")
+            print(f"Config table initialized with {session.query(Config).count()} editable items")
         
     except Exception as e:
         session.rollback()
@@ -153,6 +149,18 @@ def load_config():
         # Start with YAML config as base
         result_config = yaml_config.copy()
         
+        # Remove edit flags from result
+        def clean_edit_flags(d):
+            if isinstance(d, dict):
+                cleaned = {}
+                for k, v in d.items():
+                    if k != 'edit':
+                        cleaned[k] = clean_edit_flags(v)
+                return cleaned
+            return d
+        
+        result_config = clean_edit_flags(result_config)
+        
         # Override with database values for editable configs
         db_nested = unflatten_dict(db_flat_config)
         
@@ -170,8 +178,16 @@ def load_config():
         
     except Exception as e:
         print(f"Error loading config from database: {e}")
-        # Fallback to YAML if database fails
-        return yaml_config
+        # Fallback to YAML if database fails - clean edit flags
+        def clean_edit_flags(d):
+            if isinstance(d, dict):
+                cleaned = {}
+                for k, v in d.items():
+                    if k != 'edit':
+                        cleaned[k] = clean_edit_flags(v)
+                return cleaned
+            return d
+        return clean_edit_flags(yaml_config)
     finally:
         session.close()
 
@@ -230,7 +246,10 @@ def get_config_for_settings():
             except (json.JSONDecodeError, TypeError):
                 config_dict['display_value'] = config.value
                 # Determine input type based on key and value
-                if config.key.endswith(('_port', '_size', '_days', '_hours', '_notifications', '_interval')):
+                if config.key == 'general.default_type':
+                    config_dict['input_type'] = 'select'
+                    config_dict['options'] = ['Token', 'Troubleshoot', 'Information', 'Other']
+                elif config.key.endswith(('_port', '_size', '_days', '_hours', '_notifications', '_interval')):
                     config_dict['input_type'] = 'number'
                 elif config.value.lower() in ('true', 'false'):
                     config_dict['input_type'] = 'boolean'
@@ -268,3 +287,33 @@ def get_section_icon(section):
         'general': 'fas fa-cog'
     }
     return section_icons.get(section, 'fas fa-cog')
+
+def reset_config_to_defaults():
+    """Reset config table to default values from YAML"""
+    session = Session()
+    try:
+        # Delete all existing configs
+        session.query(Config).delete()
+        
+        # Reinitialize from YAML
+        yaml_config = load_config_from_yaml()
+        flat_config = flatten_dict(yaml_config)
+        
+        for key, value, is_editable in flat_config:
+            if is_editable:
+                config_item = Config(
+                    key=key,
+                    value=json.dumps(value) if isinstance(value, (list, dict)) else str(value),
+                    description=generate_config_description(key)
+                )
+                session.add(config_item)
+        
+        session.commit()
+        return True
+        
+    except Exception as e:
+        session.rollback()
+        print(f"Error resetting config to defaults: {e}")
+        return False
+    finally:
+        session.close()
