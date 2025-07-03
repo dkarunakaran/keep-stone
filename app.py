@@ -2,14 +2,17 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, date
 import os
-import utils.utility as utility
+import utility
+import yaml
 from sqlalchemy.orm import sessionmaker
 import base64
+from werkzeug.utils import secure_filename
 from markdown2 import Markdown
 from flask import send_from_directory
-from utils.utility import save_image, delete_image
-from utils.config_utils import load_config, update_config, get_config_for_settings, get_section_title, get_section_icon
+from utility import save_image, delete_image
 from dotenv import load_dotenv
+from utils.config_utils import load_config, update_config, get_config_for_settings, get_section_title, get_section_icon, reset_config_to_defaults
+
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage, PageBreak, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -31,7 +34,7 @@ sys.path.append(parent_dir)
 import models.base
 import models.artifact
 import models.type
-import models.config  # Add this import
+import models.config
 
 # Fix for template rendering
 import sys
@@ -46,8 +49,20 @@ app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY')
 instance_path = '/app/instance'
 os.makedirs(instance_path, exist_ok=True)
 
+# Declare config as global at module level
+config = None
+
 # Load config from database instead of YAML
-config = load_config()
+def initialize_config():
+    global config
+    config = load_config()
+    
+    # Ensure default_type configuration exists in database
+    from migrate_default_type import ensure_all_general_configs
+    ensure_all_general_configs()
+
+# Initialize config
+initialize_config()
 
 # Create database if it doesn't exist
 utility.create_database(config=config)
@@ -61,7 +76,6 @@ Type = models.type.Type
 def inject_date():
     return {'today': date.today()}
 
-# Make helper functions available in templates
 @app.context_processor
 def inject_helpers():
     return dict(
@@ -71,10 +85,6 @@ def inject_helpers():
         config=config
     )
 
-@app.context_processor
-def utility_processor():
-    return dict(config=config)
-
 # Create markdown renderer
 markdowner = Markdown(extras=["tables", "fenced-code-blocks"])
 
@@ -82,14 +92,33 @@ markdowner = Markdown(extras=["tables", "fenced-code-blocks"])
 def markdown_filter(text):
     return markdowner.convert(text)
 
-
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():
+    global config
+    
     if request.method == 'POST':
+        # Check if this is a reset request
+        if 'reset_defaults' in request.form:
+            try:
+                if reset_config_to_defaults():
+                    flash('Configuration reset to default values successfully!', 'success')
+                    # Reload config
+                    config = load_config()
+                else:
+                    flash('Error resetting configuration to defaults.', 'error')
+            except Exception as e:
+                flash(f'Error resetting configuration: {str(e)}', 'error')
+            
+            return redirect(url_for('settings'))
+        
+        # Normal settings update
         try:
             # Get all form data
             updates = {}
             for key in request.form:
+                if key == 'reset_defaults':  # Skip reset button
+                    continue
+                    
                 value = request.form[key]
                 
                 # Convert values to appropriate types based on key patterns
@@ -112,12 +141,11 @@ def settings():
             if success_count > 0:
                 flash(f'Successfully updated {success_count} configuration(s)!', 'success')
                 # Reload config
-                global config
                 config = load_config()
             else:
                 flash('No configurations were updated.', 'error')
                 
-        except Exception as e:
+        except Exception as e:      
             flash(f'Error updating configuration: {str(e)}', 'error')
         
         return redirect(url_for('index'))
@@ -126,23 +154,24 @@ def settings():
     config_items = get_config_for_settings()
     return render_template('settings.html', config_items=config_items)
 
-
 @app.route('/')
 def index():
-    search_query = request.args.get('search', '')
     type_filter = request.args.get('type', '')  # Changed to empty string default
+    show_all = request.args.get('type') == 'all'
     
-    # Start with base query
+    # Get default type from config if no type filter is specified and not showing all
+    if not type_filter and not show_all:
+        default_type_name = config.get('general', {}).get('default_type', 'Token')
+        # Find the ID of the default type
+        default_type = session.query(Type).filter(Type.name == default_type_name).first()
+        if default_type:
+            type_filter = str(default_type.id)
+    
+    # Start with base query - no search filtering on index page
     query = session.query(Artifact)
     
-    # Apply search filter if present
-    if search_query:
-        name_results = query.filter(Artifact.name.ilike(f'%{search_query}%'))
-        content_results = query.filter(Artifact.content.ilike(f'%{search_query}%'))
-        query = name_results.union(content_results)
-    
-    # Apply type filter only if specifically selected
-    if type_filter:
+    # Apply type filter only if specifically selected and not showing all
+    if type_filter and not show_all:
         query = query.filter(Artifact.type_id == type_filter)
     
     # Get final results
@@ -153,6 +182,43 @@ def index():
     types_dict = {t.id: t.name for t in types}
     
     return render_template('index.html', 
+                         artifacts=artifacts,
+                         type_filter=type_filter if not show_all else '',
+                         show_all=show_all,
+                         today=date.today(),
+                         types=types,
+                         config=config,
+                         types_dict=types_dict)
+
+@app.route('/search')
+def search():
+    search_query = request.args.get('search', '').strip()
+    type_filter = request.args.get('type', '')
+    
+    # Start with base query
+    query = session.query(Artifact).filter(Artifact.deleted == False)
+    
+    # Apply search filter if present
+    if search_query:
+        name_results = query.filter(Artifact.name.ilike(f'%{search_query}%'))
+        content_results = query.filter(Artifact.content.ilike(f'%{search_query}%'))
+        query = name_results.union(content_results)
+    else:
+        # If no search query, return empty results to encourage searching
+        query = query.filter(Artifact.id == -1)  # This will return no results
+    
+    # Apply type filter only if specifically selected
+    if type_filter:
+        query = query.filter(Artifact.type_id == type_filter)
+    
+    # Get final results
+    artifacts = query.order_by(Artifact.expiry_date.asc()).all()
+    
+    # Get types for dropdown
+    types = session.query(Type).all()
+    types_dict = {t.id: t.name for t in types}
+    
+    return render_template('search.html', 
                          artifacts=artifacts,
                          search_query=search_query,
                          type_filter=type_filter,
@@ -220,7 +286,18 @@ def add_artifact():
     
     # GET request - show form
     types = session.query(Type).all()
-    return render_template('add_artifact.html', types=types)
+    
+    # Get default type from config
+    default_type_name = config.get('general', {}).get('default_type', 'Token')
+    default_type_id = None
+    
+    # Find the ID of the default type
+    for type_obj in types:
+        if type_obj.name == default_type_name:
+            default_type_id = type_obj.id
+            break
+    
+    return render_template('add_artifact.html', types=types, default_type_id=default_type_id)
 
 @app.route('/delete/<int:artifact_id>', methods=['POST'])
 def delete_artifact(artifact_id):

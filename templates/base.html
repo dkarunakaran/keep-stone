@@ -57,12 +57,10 @@
         .warning {
             border-left: 4px solid #ca8a04;
             background: linear-gradient(135deg, #fefce8 0%, #fef9c3 100%);
-        }
-
-        .search-box {
+        }        .search-box {
             border-radius: 0.75rem;
             border: 2px solid rgb(226 232 240);
-            padding: 0.75rem 1.25rem;
+            padding: 0.5rem 1rem;
             font-size: 0.875rem;
             transition: all 0.2s ease;
         }
@@ -71,6 +69,40 @@
             border-color: var(--primary-color);
             box-shadow: 0 0 0 4px rgb(99 102 241 / 0.1);
             outline: none;
+        }
+        
+        .navbar .search-box {
+            padding: 0.4rem 0.75rem;
+            font-size: 0.8rem;
+        }
+        
+        .navbar .input-group-text {
+            border: 2px solid rgb(226 232 240);
+            border-right: none;
+            background: white;
+            border-radius: 0.75rem 0 0 0.75rem;
+            padding: 0.4rem 0.75rem;
+        }
+
+        .navbar .form-select {
+            border: 2px solid rgb(226 232 240);
+            border-left: none;
+            border-right: none;
+            background: white;
+            padding: 0.4rem 0.5rem;
+            font-size: 0.8rem;
+        }
+
+        .navbar .btn-primary {
+            padding: 0.4rem 0.75rem;
+            font-size: 0.8rem;
+        }
+
+        /* Enhanced search form styles */
+        .search-form-card {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border: 1px solid rgb(226 232 240);
+            border-radius: 1rem;
         }
 
         .btn-primary {
@@ -91,13 +123,12 @@
             background: rgba(255, 255, 255, 0.9) !important;
             backdrop-filter: blur(12px);
             box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
-        }
-
-        .navbar-brand {
+        }        .navbar-brand {
             font-weight: 700;
             font-size: 1.5rem;
             background: var(--primary-gradient);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
@@ -293,12 +324,40 @@
     </style>
     {% block head %}{% endblock %}
 </head>
-<body>
-    <nav class="navbar navbar-expand-lg navbar-light">
+<body>    <nav class="navbar navbar-expand-lg navbar-light">
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('index') }}">
                 <i class="fas fa-archive me-2"></i>KeepStone
-            </a>
+            </a>            <!-- Centered Search Bar -->
+            <div class="mx-auto" style="max-width: 500px; width: 100%;">
+                <form method="GET" action="{{ url_for('search') }}" class="d-flex">
+                    <div class="input-group">
+                        <input type="text" 
+                               name="search" 
+                               class="form-control search-box border-end-0" 
+                               placeholder="Search artifacts..." 
+                               value="{{ request.args.get('search', '') }}"
+                               style="border-radius: 0.75rem 0 0 0.75rem;">
+                        <select name="type" class="form-select border-start-0 border-end-0" style="max-width: 120px; border-radius: 0;">
+                            <option value="">All Types</option>
+                            {% for type_option in [
+                                {'id': '1', 'name': 'Token'},
+                                {'id': '2', 'name': 'Troubleshoot'},
+                                {'id': '3', 'name': 'Information'},
+                                {'id': '4', 'name': 'Other'}
+                            ] %}
+                            <option value="{{ type_option.id }}" {% if request.args.get('type') == type_option.id %}selected{% endif %}>
+                                {{ type_option.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="btn btn-primary" style="border-radius: 0 0.75rem 0.75rem 0;">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
             <div class="navbar-nav ms-auto d-flex gap-3">
                 <a class="nav-link" href="{{ url_for('index') }}">
                     <i class="fas fa-home me-2"></i>Dashboard
@@ -325,9 +384,63 @@
 
             {% block content %}{% endblock %}
         </div>
-    </div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/js/bootstrap.bundle.min.js"></script>
+    </div>    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Global search functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const navSearchForm = document.querySelector('nav form');
+            const navSearchInput = navSearchForm?.querySelector('input[name="search"]');
+            
+            if (navSearchInput) {
+                // Add keyboard shortcuts for navbar search
+                document.addEventListener('keydown', function(e) {
+                    // Focus navbar search when Ctrl+K is pressed
+                    if (e.ctrlKey && e.key === 'k') {
+                        e.preventDefault();
+                        navSearchInput.focus();
+                        navSearchInput.select();
+                    }
+                });
+                
+                // Add placeholder animation
+                let placeholderIndex = 0;
+                const placeholders = [
+                    'Search artifacts...',
+                    'Find tokens...',
+                    'Search troubleshooting guides...',
+                    'Look for information...'
+                ];
+                
+                // Only animate if not focused and empty
+                setInterval(function() {
+                    if (document.activeElement !== navSearchInput && !navSearchInput.value) {
+                        navSearchInput.placeholder = placeholders[placeholderIndex];
+                        placeholderIndex = (placeholderIndex + 1) % placeholders.length;
+                    }
+                }, 3000);
+                
+                // Add visual feedback when typing
+                navSearchInput.addEventListener('input', function() {
+                    const searchBtn = navSearchForm.querySelector('button[type="submit"]');
+                    if (this.value.trim()) {
+                        searchBtn.classList.add('btn-success');
+                        searchBtn.classList.remove('btn-primary');
+                        searchBtn.innerHTML = '<i class="fas fa-arrow-right"></i>';
+                    } else {
+                        searchBtn.classList.add('btn-primary');
+                        searchBtn.classList.remove('btn-success');
+                        searchBtn.innerHTML = '<i class="fas fa-search"></i>';
+                    }
+                });
+                
+                // Reset button when form is submitted
+                navSearchForm.addEventListener('submit', function() {
+                    const searchBtn = this.querySelector('button[type="submit"]');
+                    searchBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                });
+            }
+        });
+    </script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

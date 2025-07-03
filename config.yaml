@@ -9,6 +9,9 @@ type:
   - 'Troubleshoot'
   - 'Information'
   - 'Other'
+general:
+  edit: True # It add this section to the config table and settings UI.
+  default_type: 'Token'
 trim:
   edit: True # It add this section to the config table and settings UI.
   name: 15
