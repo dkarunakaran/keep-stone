@@ -46,15 +46,34 @@
                id="name" 
                name="name" 
                required
-               placeholder="Title">        <select class="form-select type-select" 
-                id="artifact_type" 
-                name="artifact_type" 
-                required>
-            <option value="" disabled {% if not default_type_id %}selected{% endif %}>Select type</option>
-            {% for type in types %}
-            <option value="{{ type.id }}" {% if default_type_id and type.id == default_type_id %}selected{% endif %}>{{ type.name }}</option>
-            {% endfor %}
-        </select>
+               placeholder="Title">
+        
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <select class="form-select type-select" 
+                        id="artifact_type" 
+                        name="artifact_type" 
+                        required>
+                    <option value="" disabled {% if not default_type_id %}selected{% endif %}>Select type</option>
+                    {% for type in types %}
+                    <option value="{{ type.id }}" {% if default_type_id and type.id == default_type_id %}selected{% endif %}>{{ type.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-6">
+                <select class="form-select type-select" 
+                        id="project_id" 
+                        name="project_id" 
+                        required>
+                    <option value="" disabled>Select project</option>
+                    {% for project in projects %}
+                    <option value="{{ project.id }}" {% if default_project_id and project.id == default_project_id %}selected{% endif %}>
+                        {% if project.is_default %}⭐ {% endif %}{{ project.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
 
         <textarea id="content" name="content"></textarea>
 

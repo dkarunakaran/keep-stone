@@ -1,0 +1,739 @@
+{% extends "base.html" %}
+
+{% block title %}Project Management - KeepStone{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0">
+        <i class="fas fa-folder me-2 text-primary"></i>Project Management
+    </h4>
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addProjectModal">
+        <i class="fas fa-plus me-2"></i>New Project
+    </button>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if projects %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Description</th>
+                        <th>Artifacts</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for project in projects %}
+                    <tr>
+                        <td>
+                            <strong>{{ project.name }}</strong>
+                            {% if project.is_default %}
+                            <span class="badge bg-success ms-2">
+                                <i class="fas fa-star me-1"></i>Default
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if project.description %}
+                            {{ project.description }}
+                            {% else %}
+                            <span class="text-muted">No description</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% set artifact_count = project_artifacts[project.id] %}
+                            <span class="badge {% if artifact_count > 0 %}bg-primary{% else %}bg-secondary{% endif %}">
+                                {{ artifact_count }} artifact{{ 's' if artifact_count != 1 else '' }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if project.is_default %}
+                            <span class="badge bg-success">Default</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Active</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <small class="text-muted">
+                                {{ project.created_at.strftime('%Y-%m-%d %H:%M') if project.created_at else 'N/A' }}
+                            </small>
+                        </td>
+                        <td class="text-end project-actions">
+                            <div class="btn-group" role="group">
+                                <button type="button" 
+                                        class="btn btn-sm btn-outline-primary" 
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#editProjectModal{{ project.id }}"
+                                        title="Edit Project">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                {% if not project.is_default %}
+                                <form method="POST" action="{{ url_for('set_default_project', project_id=project.id) }}" style="display: inline;">
+                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Set as Default">
+                                        <i class="fas fa-star"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                                {% if projects|length > 1 %}
+                                <button type="button" 
+                                        class="btn btn-sm btn-outline-danger" 
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#deleteProjectModal{{ project.id }}"
+                                        title="Delete Project">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-folder-open fa-3x text-muted mb-3"></i>
+            <h5 class="text-muted">No projects found</h5>
+            <p class="text-muted">Create your first project to get started.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add Project Modal -->
+<div class="modal fade" id="addProjectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus me-2"></i>Add New Project
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('add_project') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="projectName" class="form-label">Project Name *</label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="projectName" 
+                               name="name" 
+                               required 
+                               placeholder="Enter project name">
+                    </div>
+                    <div class="mb-3">
+                        <label for="projectDescription" class="form-label">Description</label>
+                        <textarea class="form-control" 
+                                  id="projectDescription" 
+                                  name="description" 
+                                  rows="3" 
+                                  placeholder="Optional project description"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Create Project
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Project Modals -->
+{% for project in projects %}
+<div class="modal fade" id="editProjectModal{{ project.id }}" tabindex="-1" aria-labelledby="editProjectModalLabel{{ project.id }}" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editProjectModalLabel{{ project.id }}">
+                    <i class="fas fa-edit me-2"></i>Edit Project: {{ project.name }}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('edit_project', project_id=project.id) }}" id="editProjectForm{{ project.id }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="editProjectName{{ project.id }}" class="form-label">Project Name *</label>
+                        <input type="text" 
+                               class="form-control edit-project-name" 
+                               id="editProjectName{{ project.id }}" 
+                               name="name" 
+                               required 
+                               value="{{ project.name }}"
+                               placeholder="Enter project name"
+                               autocomplete="off"
+                               data-project-id="{{ project.id }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editProjectDescription{{ project.id }}" class="form-label">Description</label>
+                        <textarea class="form-control edit-project-description" 
+                                  id="editProjectDescription{{ project.id }}" 
+                                  name="description" 
+                                  rows="3" 
+                                  placeholder="Optional project description"
+                                  autocomplete="off"
+                                  data-project-id="{{ project.id }}">{{ project.description or '' }}</textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Update Project
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Delete Project Modals -->
+{% for project in projects %}
+{% if projects|length > 1 %}
+<div class="modal fade" id="deleteProjectModal{{ project.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Delete Project
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the project <strong>"{{ project.name }}"</strong>?</p>
+                {% if project.is_default %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    This is the default project. Before deleting, you must set another project as default.
+                </div>
+                {% else %}
+                    {% set artifact_count = project_artifacts[project.id] %}
+                    {% if artifact_count > 0 %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        This project has {{ artifact_count }} artifact{{ 's' if artifact_count != 1 else '' }}. 
+                        You can move them to another project first.
+                    </div>
+                    <div class="mb-3">
+                        <label for="moveProjectSelect{{ project.id }}" class="form-label">Move artifacts to:</label>
+                        <select class="form-select" id="moveProjectSelect{{ project.id }}">
+                            <option value="">Select a project...</option>
+                            {% for other_project in projects %}
+                            {% if other_project.id != project.id %}
+                            <option value="{{ other_project.id }}">{{ other_project.name }}</option>
+                            {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        This action cannot be undone.
+                    </div>
+                    {% endif %}
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                {% if not project.is_default %}
+                    {% set artifact_count = project_artifacts[project.id] %}
+                    {% if artifact_count > 0 %}
+                    <button type="button" 
+                            class="btn btn-primary" 
+                            onclick="moveArtifacts({{ project.id }}, '{{ project.name }}')"
+                            id="moveBtn{{ project.id }}">
+                        <i class="fas fa-arrow-right me-2"></i>Move Artifacts
+                    </button>
+                    {% else %}
+                    <form method="POST" action="{{ url_for('delete_project', project_id=project.id) }}" style="display: inline;">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash me-2"></i>Delete Project
+                        </button>
+                    </form>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+
+<style>
+.table th {
+    background-color: #f8f9fa;
+    border-top: none;
+    font-weight: 600;
+}
+
+.btn-group .btn {
+    border-radius: 0.375rem !important;
+    margin-right: 0.25rem;
+}
+
+.badge {
+    font-size: 0.75em;
+}
+
+.project-actions {
+    white-space: nowrap;
+}
+
+/* Ensure modal form inputs are always editable */
+.modal .form-control {
+    pointer-events: auto !important;
+    user-select: auto !important;
+    -webkit-user-select: auto !important;
+    -moz-user-select: auto !important;
+    -ms-user-select: auto !important;
+}
+
+.modal input[type="text"], 
+.modal textarea {
+    background-color: #fff !important;
+    border: 1px solid #ced4da !important;
+    color: #212529 !important;
+}
+
+.modal input[type="text"]:focus, 
+.modal textarea:focus {
+    border-color: #86b7fe !important;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+}
+
+/* Specific styles for edit project inputs */
+.edit-project-name,
+.edit-project-description {
+    background-color: #ffffff !important;
+    border: 1px solid #dee2e6 !important;
+    color: #495057 !important;
+    cursor: text !important;
+    pointer-events: auto !important;
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    -moz-user-select: text !important;
+    -ms-user-select: text !important;
+}
+
+.edit-project-name:focus,
+.edit-project-description:focus {
+    background-color: #ffffff !important;
+    border-color: #80bdff !important;
+    outline: 0 !important;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
+}
+
+/* Ensure modal components are always visible and functional */
+.modal-dialog {
+    max-height: calc(100vh - 2rem) !important;
+    margin: 1rem auto !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+.modal-content {
+    max-height: calc(100vh - 4rem) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+}
+
+.modal-footer {
+    display: flex !important;
+    justify-content: flex-end !important;
+    gap: 0.5rem !important;
+    padding: 1rem !important;
+    border-top: 1px solid #dee2e6 !important;
+    flex-shrink: 0 !important;
+    margin-top: auto !important;
+}
+
+.modal-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 1rem !important;
+    border-bottom: 1px solid #dee2e6 !important;
+    flex-shrink: 0 !important;
+}
+
+.modal-body {
+    padding: 1rem !important;
+    flex: 1 !important;
+    overflow-y: auto !important;
+    max-height: calc(100vh - 12rem) !important;
+}
+
+.btn-close {
+    background: none !important;
+    border: none !important;
+    font-size: 1.5rem !important;
+    cursor: pointer !important;
+    pointer-events: auto !important;
+    position: relative !important;
+    z-index: 1051 !important;
+}
+
+.modal .btn {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    position: relative !important;
+    z-index: 1050 !important;
+}
+
+.modal-footer .btn {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    position: relative !important;
+    z-index: 1052 !important;
+    border: 1px solid !important;
+    padding: 0.5rem 1rem !important;
+    font-weight: 500 !important;
+}
+
+.modal-footer .btn:hover {
+    transform: none !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+}
+
+/* Force modal to be properly sized */
+.modal.fade .modal-dialog {
+    transform: translate(0, -50px) !important;
+}
+
+.modal.show .modal-dialog {
+    transform: none !important;
+}
+
+/* Ensure edit project modals are properly sized */
+#editProjectModal1 .modal-dialog,
+#editProjectModal2 .modal-dialog,
+#editProjectModal3 .modal-dialog,
+#editProjectModal4 .modal-dialog,
+#editProjectModal5 .modal-dialog,
+[id^="editProjectModal"] .modal-dialog {
+    max-width: 500px !important;
+    height: auto !important;
+    min-height: 500px !important;
+    margin: 1rem auto !important;
+}
+
+[id^="editProjectModal"] .modal-content {
+    height: auto !important;
+    min-height: 450px !important;
+    max-height: 90vh !important;
+}
+
+[id^="editProjectModal"] .modal-footer {
+    position: sticky !important;
+    bottom: 0 !important;
+    background-color: #fff !important;
+    z-index: 1051 !important;
+    box-shadow: 0 -2px 4px rgba(0,0,0,0.1) !important;
+}
+
+/* Override any conflicting styles from base.html */
+.modal-backdrop {
+    z-index: 1040 !important;
+}
+
+.modal {
+    z-index: 1045 !important;
+}
+
+.modal .modal-dialog {
+    z-index: 1046 !important;
+}
+</style>
+
+<script>
+function moveArtifacts(projectId, projectName) {
+    const selectElement = document.getElementById('moveProjectSelect' + projectId);
+    const targetProjectId = selectElement.value;
+    
+    if (!targetProjectId) {
+        alert('Please select a target project');
+        return;
+    }
+    
+    const targetProjectName = selectElement.options[selectElement.selectedIndex].text;
+    
+    if (confirm(`Move all artifacts from "${projectName}" to "${targetProjectName}"?`)) {
+        // Create and submit form
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/projects/${projectId}/move_artifacts`;
+        
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'target_project_id';
+        input.value = targetProjectId;
+        
+        form.appendChild(input);
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// Fix for Bootstrap modal form field issues
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, setting up modal handlers');
+    
+    // Function to enable form fields
+    function enableFormFields(modal) {
+        console.log('Enabling form fields in modal:', modal.id);
+        
+        // Find all form elements in this modal and ensure they're enabled
+        const formElements = modal.querySelectorAll('input, textarea, select');
+        formElements.forEach(function(element) {
+            element.disabled = false;
+            element.readOnly = false;
+            element.style.pointerEvents = 'auto';
+            element.style.userSelect = 'text';
+            element.style.webkitUserSelect = 'text';
+            element.style.mozUserSelect = 'text';
+            element.style.msUserSelect = 'text';
+            element.style.backgroundColor = '#ffffff';
+            element.style.cursor = 'text';
+            
+            // Remove any readonly or disabled attributes
+            element.removeAttribute('readonly');
+            element.removeAttribute('disabled');
+            
+            console.log('Enabled element:', element.id, element.tagName, element.type);
+        });
+        
+        // Specifically target edit project inputs
+        const editInputs = modal.querySelectorAll('.edit-project-name, .edit-project-description');
+        editInputs.forEach(function(input) {
+            input.style.backgroundColor = '#ffffff';
+            input.style.border = '1px solid #dee2e6';
+            input.style.color = '#495057';
+            input.style.cursor = 'text';
+            input.style.pointerEvents = 'auto';
+            input.disabled = false;
+            input.readOnly = false;
+            console.log('Specifically enabled edit input:', input.id);
+        });
+        
+        // Ensure footer buttons are visible and clickable
+        const footer = modal.querySelector('.modal-footer');
+        if (footer) {
+            footer.style.display = 'flex';
+            footer.style.justifyContent = 'flex-end';
+            footer.style.gap = '0.5rem';
+            footer.style.flexShrink = '0';
+            footer.style.marginTop = 'auto';
+            footer.style.position = 'relative';
+            footer.style.zIndex = '1050';
+            console.log('Modal footer made visible');
+        }
+        
+        // Ensure modal content is properly sized
+        const modalContent = modal.querySelector('.modal-content');
+        if (modalContent) {
+            modalContent.style.display = 'flex';
+            modalContent.style.flexDirection = 'column';
+            modalContent.style.maxHeight = 'calc(100vh - 4rem)';
+            modalContent.style.overflow = 'hidden';
+        }
+        
+        // Ensure modal body doesn't overflow
+        const modalBody = modal.querySelector('.modal-body');
+        if (modalBody) {
+            modalBody.style.flex = '1';
+            modalBody.style.overflowY = 'auto';
+            modalBody.style.maxHeight = 'calc(100vh - 12rem)';
+        }
+        
+        // Ensure close buttons work
+        const closeButtons = modal.querySelectorAll('[data-bs-dismiss="modal"]');
+        closeButtons.forEach(function(btn) {
+            btn.style.pointerEvents = 'auto';
+            btn.style.cursor = 'pointer';
+            console.log('Close button enabled:', btn.className);
+        });
+    }
+    
+    // Initialize Bootstrap modals explicitly
+    const editModals = document.querySelectorAll('[id^="editProjectModal"]');
+    console.log('Found edit modals:', editModals.length);
+    
+    editModals.forEach(function(modalElement) {
+        // Create Bootstrap modal instance
+        const modal = new bootstrap.Modal(modalElement, {
+            backdrop: true,
+            keyboard: true,
+            focus: true
+        });
+        
+        // Store modal instance for later use
+        modalElement._bsModal = modal;
+        
+        // Try multiple events to ensure fields are enabled
+        modalElement.addEventListener('show.bs.modal', function() {
+            console.log('Edit modal showing:', modalElement.id);
+            enableFormFields(modalElement);
+        });
+        
+        modalElement.addEventListener('shown.bs.modal', function() {
+            console.log('Edit modal shown:', modalElement.id);
+            enableFormFields(modalElement);
+            
+            // Force proper modal sizing
+            const modalDialog = modalElement.querySelector('.modal-dialog');
+            const modalContent = modalElement.querySelector('.modal-content');
+            const modalFooter = modalElement.querySelector('.modal-footer');
+            
+            if (modalDialog) {
+                modalDialog.style.height = 'auto';
+                modalDialog.style.minHeight = '300px';
+                modalDialog.style.maxHeight = 'calc(100vh - 2rem)';
+                modalDialog.style.display = 'flex';
+                modalDialog.style.alignItems = 'center';
+            }
+            
+            if (modalContent) {
+                modalContent.style.height = 'auto';
+                modalContent.style.minHeight = '300px';
+                modalContent.style.display = 'flex';
+                modalContent.style.flexDirection = 'column';
+            }
+            
+            if (modalFooter) {
+                modalFooter.style.display = 'flex';
+                modalFooter.style.justifyContent = 'flex-end';
+                modalFooter.style.flexShrink = '0';
+                modalFooter.style.marginTop = 'auto';
+                modalFooter.style.visibility = 'visible';
+                modalFooter.style.opacity = '1';
+                modalFooter.style.position = 'relative';
+                modalFooter.style.bottom = '0';
+                console.log('Modal footer positioned:', modalFooter.style.display);
+            }
+            
+            // Focus on the first input field
+            const firstInput = modalElement.querySelector('input[type="text"]');
+            if (firstInput) {
+                setTimeout(() => {
+                    firstInput.focus();
+                    firstInput.select();
+                    console.log('Focused on:', firstInput.id);
+                }, 200);
+            }
+        });
+        
+        // Handle form submission
+        const form = modalElement.querySelector('form');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                console.log('Form submitted for modal:', modalElement.id);
+                console.log('Form action:', form.action);
+                console.log('Form method:', form.method);
+                
+                // Get form data
+                const formData = new FormData(form);
+                console.log('Form data:', Array.from(formData.entries()));
+                
+                // Let the form submit naturally
+                return true;
+            });
+        }
+    });
+    
+    // Also fix add project modal
+    const addModal = document.getElementById('addProjectModal');
+    if (addModal) {
+        const modal = new bootstrap.Modal(addModal, {
+            backdrop: true,
+            keyboard: true,
+            focus: true
+        });
+        
+        addModal.addEventListener('shown.bs.modal', function() {
+            const firstInput = addModal.querySelector('input[type="text"]');
+            if (firstInput) {
+                setTimeout(() => {
+                    firstInput.focus();
+                }, 150);
+            }
+        });
+    }
+    
+    // Ensure all modals have proper minimum height
+    const allModals = document.querySelectorAll('.modal');
+    allModals.forEach(function(modal) {
+        const modalDialog = modal.querySelector('.modal-dialog');
+        const modalContent = modal.querySelector('.modal-content');
+        
+        if (modalDialog) {
+            modalDialog.style.minHeight = '500px';
+        }
+        
+        if (modalContent) {
+            modalContent.style.minHeight = '450px';
+        }
+    });
+    
+    // Add click handlers to edit buttons
+    const editButtons = document.querySelectorAll('[data-bs-target^="#editProjectModal"]');
+    console.log('Found edit buttons:', editButtons.length);
+    
+    editButtons.forEach(function(button) {
+        button.addEventListener('click', function(e) {
+            const targetModalId = this.getAttribute('data-bs-target');
+            console.log('Edit button clicked for modal:', targetModalId);
+            
+            // Find the modal and show it
+            const modalElement = document.querySelector(targetModalId);
+            if (modalElement && modalElement._bsModal) {
+                console.log('Showing modal programmatically');
+                modalElement._bsModal.show();
+            }
+            
+            // Immediately try to enable fields
+            setTimeout(() => {
+                const modal = document.querySelector(targetModalId);
+                if (modal) {
+                    enableFormFields(modal);
+                }
+            }, 50);
+        });
+    });
+    
+    // Handle close button clicks manually if needed
+    document.addEventListener('click', function(e) {
+        if (e.target.matches('[data-bs-dismiss="modal"]') || e.target.closest('[data-bs-dismiss="modal"]')) {
+            const modal = e.target.closest('.modal');
+            if (modal && modal._bsModal) {
+                console.log('Closing modal:', modal.id);
+                modal._bsModal.hide();
+            }
+        }
+    });
+    
+    // Handle update button clicks specifically
+    document.addEventListener('click', function(e) {
+        if (e.target.matches('button[type="submit"]') && e.target.closest('.modal')) {
+            console.log('Update button clicked:', e.target);
+            const form = e.target.closest('form');
+            if (form) {
+                console.log('Form found, submitting:', form.id);
+                // Ensure the form is not prevented from submitting
+                e.stopPropagation();
+                return true;
+            }
+        }
+    });
+});
+</script>
+{% endblock %}
