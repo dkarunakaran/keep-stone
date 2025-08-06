@@ -249,7 +249,10 @@ def get_config_for_settings():
                 if config.key == 'general.default_type':
                     config_dict['input_type'] = 'select'
                     config_dict['options'] = ['Token', 'Troubleshoot', 'Information', 'Other']
-                elif config.key.endswith(('_port', '_size', '_days', '_hours', '_notifications', '_interval')):
+                elif config.key == 'backup.backup_day':
+                    config_dict['input_type'] = 'select'
+                    config_dict['options'] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+                elif config.key.endswith(('_port', '_size', '_days', '_hours', '_notifications', '_interval', '_backups')):
                     config_dict['input_type'] = 'number'
                 elif config.value.lower() in ('true', 'false'):
                     config_dict['input_type'] = 'boolean'
@@ -273,7 +276,8 @@ def get_section_title(section):
         'sql_alchemy': 'Database Settings', 
         'trim': 'Display & Formatting',
         'email': 'Email & Notifications',
-        'general': 'General Settings'
+        'general': 'General Settings',
+        'backup': 'Backup & Recovery Settings'
     }
     return section_titles.get(section, section.replace('_', ' ').title())
 
@@ -284,7 +288,8 @@ def get_section_icon(section):
         'sql_alchemy': 'fas fa-database',
         'trim': 'fas fa-eye',
         'email': 'fas fa-envelope',
-        'general': 'fas fa-cog'
+        'general': 'fas fa-cog',
+        'backup': 'fas fa-shield-alt'
     }
     return section_icons.get(section, 'fas fa-cog')
 

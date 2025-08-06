@@ -120,7 +120,7 @@ def settings():
                 value = request.form[key]
                 
                 # Convert values to appropriate types based on key patterns
-                if key.endswith(('_port', '_size', '_days', '_hours', '_notifications', '_interval')) or key.split('.')[-1] in ['max_file_size', 'smtp_port', 'notification_days', 'max_notifications', 'notification_interval', 'cleanup_threshold_hours']:
+                if key.endswith(('_port', '_size', '_days', '_hours', '_notifications', '_interval', '_backups')) or key.split('.')[-1] in ['max_file_size', 'smtp_port', 'notification_days', 'max_notifications', 'notification_interval', 'cleanup_threshold_hours', 'keep_backups']:
                     value = int(value)
                 elif value.lower() in ('true', 'false'):
                     value = value.lower() == 'true'
