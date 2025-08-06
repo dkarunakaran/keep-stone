@@ -826,33 +826,36 @@ def projects():
                          default_project=default_project,
                          project_artifacts=project_artifacts)
 
-@app.route('/projects/add', methods=['POST'])
+@app.route('/projects/add', methods=['GET', 'POST'])
 def add_project():
     """Add a new project"""
+    if request.method == 'GET':
+        return render_template('add_project.html')
+    
     try:
         name = request.form['name'].strip()
         description = request.form.get('description', '').strip()
         
         if not name:
             flash('Project name is required', 'error')
-            return redirect(url_for('projects'))
+            return render_template('add_project.html')
         
         # Check if project already exists
         existing = session.query(Project).filter(Project.name == name).first()
         if existing:
             flash('Project with this name already exists', 'error')
-            return redirect(url_for('projects'))
+            return render_template('add_project.html')
         
         project = Project(name=name, description=description)
         session.add(project)
         session.commit()
         
         flash(f'Project "{name}" created successfully!', 'success')
+        return redirect(url_for('projects'))
     except Exception as e:
         flash(f'Error creating project: {str(e)}', 'error')
         session.rollback()
-    
-    return redirect(url_for('projects'))
+        return render_template('add_project.html')
 
 @app.route('/projects/<int:project_id>/set_default', methods=['POST'])
 def set_default_project(project_id):
@@ -907,21 +910,45 @@ def delete_project(project_id):
     
     return redirect(url_for('projects'))
 
-@app.route('/projects/<int:project_id>/edit', methods=['POST'])
+@app.route('/projects/<int:project_id>/edit', methods=['GET', 'POST'])
 def edit_project(project_id):
     """Edit a project"""
-    try:
-        project = session.query(Project).get(project_id)
-        if not project:
-            flash('Project not found', 'error')
-            return redirect(url_for('projects'))
+    project = session.query(Project).get(project_id)
+    if not project:
+        flash('Project not found', 'error')
+        return redirect(url_for('projects'))
+    
+    if request.method == 'GET':
+        # Get projects list and artifact count for the template
+        projects = get_all_projects()
+        artifact_count = session.query(Artifact).filter(
+            Artifact.project_id == project_id,
+            Artifact.deleted == False
+        ).count()
+        project_artifacts = {project_id: artifact_count}
         
+        return render_template('edit_project.html', 
+                             project=project, 
+                             projects=projects,
+                             project_artifacts=project_artifacts)
+    
+    try:
         name = request.form['name'].strip()
         description = request.form.get('description', '').strip()
         
         if not name:
             flash('Project name is required', 'error')
-            return redirect(url_for('projects'))
+            # Get projects list and artifact count for the template
+            projects = get_all_projects()
+            artifact_count = session.query(Artifact).filter(
+                Artifact.project_id == project_id,
+                Artifact.deleted == False
+            ).count()
+            project_artifacts = {project_id: artifact_count}
+            return render_template('edit_project.html', 
+                                 project=project, 
+                                 projects=projects,
+                                 project_artifacts=project_artifacts)
         
         # Check if another project with the same name exists
         existing = session.query(Project).filter(
@@ -930,7 +957,17 @@ def edit_project(project_id):
         ).first()
         if existing:
             flash('Another project with this name already exists', 'error')
-            return redirect(url_for('projects'))
+            # Get projects list and artifact count for the template
+            projects = get_all_projects()
+            artifact_count = session.query(Artifact).filter(
+                Artifact.project_id == project_id,
+                Artifact.deleted == False
+            ).count()
+            project_artifacts = {project_id: artifact_count}
+            return render_template('edit_project.html', 
+                                 project=project, 
+                                 projects=projects,
+                                 project_artifacts=project_artifacts)
         
         # Update project
         project.name = name
@@ -938,11 +975,21 @@ def edit_project(project_id):
         session.commit()
         
         flash(f'Project "{name}" updated successfully!', 'success')
+        return redirect(url_for('projects'))
     except Exception as e:
         flash(f'Error updating project: {str(e)}', 'error')
         session.rollback()
-    
-    return redirect(url_for('projects'))
+        # Get projects list and artifact count for the template
+        projects = get_all_projects()
+        artifact_count = session.query(Artifact).filter(
+            Artifact.project_id == project_id,
+            Artifact.deleted == False
+        ).count()
+        project_artifacts = {project_id: artifact_count}
+        return render_template('edit_project.html', 
+                             project=project, 
+                             projects=projects,
+                             project_artifacts=project_artifacts)
 
 @app.route('/projects/<int:project_id>/move_artifacts', methods=['POST'])
 def move_artifacts(project_id):
