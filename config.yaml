@@ -31,3 +31,11 @@ storage:
   allowed_extensions: ["jpg", "jpeg", "png", "gif"]
   max_file_size: 5242880  # 5MB in bytes
   cleanup_threshold_hours: 3  # Delete files older than the threshold
+backup:
+  edit: True # It add this section to the config table and settings UI.
+  enabled: True  # Enable weekly backups
+  backup_path: "/app/backups"  # Where to store backup files
+  keep_backups: 4  # Number of backup files to keep (4 weeks)
+  backup_database: True  # Backup the SQLite database
+  backup_images: False  # Backup uploaded images (can be large)
+  backup_day: "monday"  # Day of week to run backup (monday, tuesday, etc.)

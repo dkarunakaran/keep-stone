@@ -35,6 +35,7 @@ import models.base
 import models.artifact
 import models.type
 import models.config
+import models.project
 
 # Fix for template rendering
 import sys
@@ -56,10 +57,6 @@ config = None
 def initialize_config():
     global config
     config = load_config()
-    
-    # Ensure default_type configuration exists in database
-    from migrate_default_type import ensure_all_general_configs
-    ensure_all_general_configs()
 
 # Initialize config
 initialize_config()
@@ -70,6 +67,7 @@ Session = sessionmaker(bind=models.base.engine)
 session = Session()
 Artifact = models.artifact.Artifact
 Type = models.type.Type
+Project = models.project.Project
 
 # Make date available in templates
 @app.context_processor
@@ -122,7 +120,7 @@ def settings():
                 value = request.form[key]
                 
                 # Convert values to appropriate types based on key patterns
-                if key.endswith(('_port', '_size', '_days', '_hours', '_notifications', '_interval')) or key.split('.')[-1] in ['max_file_size', 'smtp_port', 'notification_days', 'max_notifications', 'notification_interval', 'cleanup_threshold_hours']:
+                if key.endswith(('_port', '_size', '_days', '_hours', '_notifications', '_interval', '_backups')) or key.split('.')[-1] in ['max_file_size', 'smtp_port', 'notification_days', 'max_notifications', 'notification_interval', 'cleanup_threshold_hours', 'keep_backups']:
                     value = int(value)
                 elif value.lower() in ('true', 'false'):
                     value = value.lower() == 'true'
@@ -157,6 +155,7 @@ def settings():
 @app.route('/')
 def index():
     type_filter = request.args.get('type', '')  # Changed to empty string default
+    project_filter = request.args.get('project', 'default')  # Default to showing default project
     show_all = request.args.get('type') == 'all'
     
     # Get default type from config if no type filter is specified and not showing all
@@ -168,25 +167,41 @@ def index():
             type_filter = str(default_type.id)
     
     # Start with base query - no search filtering on index page
-    query = session.query(Artifact)
+    query = session.query(Artifact).filter(Artifact.deleted == False)
     
     # Apply type filter only if specifically selected and not showing all
     if type_filter and not show_all:
         query = query.filter(Artifact.type_id == type_filter)
     
+    # Apply project filter
+    if project_filter == 'default':
+        # Show only default project artifacts
+        default_project_id = get_default_project_id()
+        if default_project_id:
+            query = query.filter(Artifact.project_id == default_project_id)
+    elif project_filter and project_filter != 'all':
+        # Show specific project artifacts
+        query = query.filter(Artifact.project_id == project_filter)
+    # If project_filter is 'all', don't add project filter (show all projects)
+    
     # Get final results
-    artifacts = query.order_by(Artifact.expiry_date.asc()).filter(Artifact.deleted == False).all()
+    artifacts = query.order_by(Artifact.expiry_date.asc()).all()
     
     # Get types for dropdown
     types = session.query(Type).all()
     types_dict = {t.id: t.name for t in types}
     
+    # Get projects for dropdown
+    projects = get_all_projects()
+    
     return render_template('index.html', 
                          artifacts=artifacts,
                          type_filter=type_filter if not show_all else '',
+                         project_filter=project_filter,
                          show_all=show_all,
                          today=date.today(),
                          types=types,
+                         projects=projects,
                          config=config,
                          types_dict=types_dict)
 
@@ -194,6 +209,7 @@ def index():
 def search():
     search_query = request.args.get('search', '').strip()
     type_filter = request.args.get('type', '')
+    project_filter = request.args.get('project', '')  # New project filter
     
     # Start with base query
     query = session.query(Artifact).filter(Artifact.deleted == False)
@@ -211,6 +227,17 @@ def search():
     if type_filter:
         query = query.filter(Artifact.type_id == type_filter)
     
+    # Apply project filter
+    if project_filter == 'default':
+        # Search only in default project
+        default_project_id = get_default_project_id()
+        if default_project_id:
+            query = query.filter(Artifact.project_id == default_project_id)
+    elif project_filter and project_filter != 'all':
+        # Search in specific project
+        query = query.filter(Artifact.project_id == project_filter)
+    # If project_filter is 'all' or empty, don't add project filter (search all projects)
+    
     # Get final results
     artifacts = query.order_by(Artifact.expiry_date.asc()).all()
     
@@ -218,12 +245,17 @@ def search():
     types = session.query(Type).all()
     types_dict = {t.id: t.name for t in types}
     
+    # Get projects for dropdown
+    projects = get_all_projects()
+    
     return render_template('search.html', 
                          artifacts=artifacts,
                          search_query=search_query,
                          type_filter=type_filter,
+                         project_filter=project_filter,
                          today=date.today(),
                          types=types,
+                         projects=projects,
                          config=config,
                          types_dict=types_dict)
 
@@ -262,12 +294,18 @@ def add_artifact():
                         'path': relative_path
                     })
             
+            # Get project assignment (use form value or default)
+            project_id = request.form.get('project_id')
+            if not project_id:
+                project_id = get_default_project_id()
+            
             # Create artifact with image metadata
             artifact = Artifact(
                 name=request.form['name'],
                 type_id=request.form['artifact_type'],
                 content=request.form['content'],
                 expiry_date=expiry_date,
+                project_id=project_id,
                 images=images_data
             )
             
@@ -286,6 +324,7 @@ def add_artifact():
     
     # GET request - show form
     types = session.query(Type).all()
+    projects = get_all_projects()
     
     # Get default type from config
     default_type_name = config.get('general', {}).get('default_type', 'Token')
@@ -297,7 +336,11 @@ def add_artifact():
             default_type_id = type_obj.id
             break
     
-    return render_template('add_artifact.html', types=types, default_type_id=default_type_id)
+    return render_template('add_artifact.html', 
+                         types=types, 
+                         projects=projects,
+                         default_type_id=default_type_id,
+                         default_project_id=get_default_project_id())
 
 @app.route('/delete/<int:artifact_id>', methods=['POST'])
 def delete_artifact(artifact_id):
@@ -748,7 +791,238 @@ def export_artifact_pdf(artifact_id):
         flash(f'Error generating PDF: {str(e)}', 'error')
         return redirect(url_for('artifact_detail', artifact_id=artifact_id))
 
+# Helper functions for project management
+def get_default_project():
+    """Get the default project"""
+    return session.query(Project).filter(Project.is_default == True).first()
 
+def get_default_project_id():
+    """Get the default project ID"""
+    default_project = get_default_project()
+    return default_project.id if default_project else None
+
+def get_all_projects():
+    """Get all projects ordered by name"""
+    return session.query(Project).order_by(Project.name).all()
+
+# Project management routes
+@app.route('/projects')
+def projects():
+    """List all projects"""
+    projects = get_all_projects()
+    default_project = get_default_project()
+    
+    # Get artifact counts for each project
+    project_artifacts = {}
+    for project in projects:
+        count = session.query(Artifact).filter(
+            Artifact.project_id == project.id,
+            Artifact.deleted == False
+        ).count()
+        project_artifacts[project.id] = count
+    
+    return render_template('projects.html', 
+                         projects=projects, 
+                         default_project=default_project,
+                         project_artifacts=project_artifacts)
+
+@app.route('/projects/add', methods=['GET', 'POST'])
+def add_project():
+    """Add a new project"""
+    if request.method == 'GET':
+        return render_template('add_project.html')
+    
+    try:
+        name = request.form['name'].strip()
+        description = request.form.get('description', '').strip()
+        
+        if not name:
+            flash('Project name is required', 'error')
+            return render_template('add_project.html')
+        
+        # Check if project already exists
+        existing = session.query(Project).filter(Project.name == name).first()
+        if existing:
+            flash('Project with this name already exists', 'error')
+            return render_template('add_project.html')
+        
+        project = Project(name=name, description=description)
+        session.add(project)
+        session.commit()
+        
+        flash(f'Project "{name}" created successfully!', 'success')
+        return redirect(url_for('projects'))
+    except Exception as e:
+        flash(f'Error creating project: {str(e)}', 'error')
+        session.rollback()
+        return render_template('add_project.html')
+
+@app.route('/projects/<int:project_id>/set_default', methods=['POST'])
+def set_default_project(project_id):
+    """Set a project as default"""
+    try:
+        project = session.query(Project).get(project_id)
+        if not project:
+            flash('Project not found', 'error')
+            return redirect(url_for('projects'))
+        
+        # Set this project as default
+        project.set_as_default(session)
+        flash(f'"{project.name}" set as default project', 'success')
+    except Exception as e:
+        flash(f'Error setting default project: {str(e)}', 'error')
+        session.rollback()
+    
+    return redirect(url_for('projects'))
+
+@app.route('/projects/<int:project_id>/delete', methods=['POST'])
+def delete_project(project_id):
+    """Delete a project"""
+    try:
+        project = session.query(Project).get(project_id)
+        if not project:
+            flash('Project not found', 'error')
+            return redirect(url_for('projects'))
+        
+        # Check if there's only one project left
+        total_projects = session.query(Project).count()
+        if total_projects <= 1:
+            flash('Cannot delete the last remaining project. At least one project must exist.', 'error')
+            return redirect(url_for('projects'))
+        
+        if project.is_default:
+            flash('Cannot delete the default project. Set another project as default first.', 'error')
+            return redirect(url_for('projects'))
+        
+        # Check if project has artifacts
+        artifact_count = session.query(Artifact).filter(Artifact.project_id == project_id).count()
+        if artifact_count > 0:
+            flash(f'Cannot delete project with {artifact_count} artifacts. Move or delete them first.', 'error')
+            return redirect(url_for('projects'))
+        
+        project_name = project.name
+        session.delete(project)
+        session.commit()
+        flash(f'Project "{project_name}" deleted successfully', 'success')
+    except Exception as e:
+        flash(f'Error deleting project: {str(e)}', 'error')
+        session.rollback()
+    
+    return redirect(url_for('projects'))
+
+@app.route('/projects/<int:project_id>/edit', methods=['GET', 'POST'])
+def edit_project(project_id):
+    """Edit a project"""
+    project = session.query(Project).get(project_id)
+    if not project:
+        flash('Project not found', 'error')
+        return redirect(url_for('projects'))
+    
+    if request.method == 'GET':
+        # Get projects list and artifact count for the template
+        projects = get_all_projects()
+        artifact_count = session.query(Artifact).filter(
+            Artifact.project_id == project_id,
+            Artifact.deleted == False
+        ).count()
+        project_artifacts = {project_id: artifact_count}
+        
+        return render_template('edit_project.html', 
+                             project=project, 
+                             projects=projects,
+                             project_artifacts=project_artifacts)
+    
+    try:
+        name = request.form['name'].strip()
+        description = request.form.get('description', '').strip()
+        
+        if not name:
+            flash('Project name is required', 'error')
+            # Get projects list and artifact count for the template
+            projects = get_all_projects()
+            artifact_count = session.query(Artifact).filter(
+                Artifact.project_id == project_id,
+                Artifact.deleted == False
+            ).count()
+            project_artifacts = {project_id: artifact_count}
+            return render_template('edit_project.html', 
+                                 project=project, 
+                                 projects=projects,
+                                 project_artifacts=project_artifacts)
+        
+        # Check if another project with the same name exists
+        existing = session.query(Project).filter(
+            Project.name == name, 
+            Project.id != project_id
+        ).first()
+        if existing:
+            flash('Another project with this name already exists', 'error')
+            # Get projects list and artifact count for the template
+            projects = get_all_projects()
+            artifact_count = session.query(Artifact).filter(
+                Artifact.project_id == project_id,
+                Artifact.deleted == False
+            ).count()
+            project_artifacts = {project_id: artifact_count}
+            return render_template('edit_project.html', 
+                                 project=project, 
+                                 projects=projects,
+                                 project_artifacts=project_artifacts)
+        
+        # Update project
+        project.name = name
+        project.description = description if description else None
+        session.commit()
+        
+        flash(f'Project "{name}" updated successfully!', 'success')
+        return redirect(url_for('projects'))
+    except Exception as e:
+        flash(f'Error updating project: {str(e)}', 'error')
+        session.rollback()
+        # Get projects list and artifact count for the template
+        projects = get_all_projects()
+        artifact_count = session.query(Artifact).filter(
+            Artifact.project_id == project_id,
+            Artifact.deleted == False
+        ).count()
+        project_artifacts = {project_id: artifact_count}
+        return render_template('edit_project.html', 
+                             project=project, 
+                             projects=projects,
+                             project_artifacts=project_artifacts)
+
+@app.route('/projects/<int:project_id>/move_artifacts', methods=['POST'])
+def move_artifacts(project_id):
+    """Move all artifacts from one project to another"""
+    try:
+        source_project = session.query(Project).get(project_id)
+        target_project_id = request.form.get('target_project_id')
+        
+        if not source_project:
+            flash('Source project not found', 'error')
+            return redirect(url_for('projects'))
+        
+        if not target_project_id:
+            flash('Target project not specified', 'error')
+            return redirect(url_for('projects'))
+        
+        target_project = session.query(Project).get(target_project_id)
+        if not target_project:
+            flash('Target project not found', 'error')
+            return redirect(url_for('projects'))
+        
+        # Move all artifacts from source to target
+        artifacts = session.query(Artifact).filter(Artifact.project_id == project_id).all()
+        for artifact in artifacts:
+            artifact.project_id = target_project_id
+        
+        session.commit()
+        flash(f'Moved {len(artifacts)} artifacts from "{source_project.name}" to "{target_project.name}"', 'success')
+    except Exception as e:
+        flash(f'Error moving artifacts: {str(e)}', 'error')
+        session.rollback()
+    
+    return redirect(url_for('projects'))
 
 # All routes are defined above. The following runs the app if executed directly.
 if __name__ == '__main__':
