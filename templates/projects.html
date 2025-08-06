@@ -7,9 +7,9 @@
     <h4 class="mb-0">
         <i class="fas fa-folder me-2 text-primary"></i>Project Management
     </h4>
-    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addProjectModal">
+    <a href="{{ url_for('add_project') }}" class="btn btn-primary">
         <i class="fas fa-plus me-2"></i>New Project
-    </button>
+    </a>
 </div>
 
 <div class="card">
@@ -65,13 +65,11 @@
                         </td>
                         <td class="text-end project-actions">
                             <div class="btn-group" role="group">
-                                <button type="button" 
-                                        class="btn btn-sm btn-outline-primary" 
-                                        data-bs-toggle="modal" 
-                                        data-bs-target="#editProjectModal{{ project.id }}"
-                                        title="Edit Project">
+                                <a href="{{ url_for('edit_project', project_id=project.id) }}" 
+                                   class="btn btn-sm btn-outline-primary" 
+                                   title="Edit Project">
                                     <i class="fas fa-edit"></i>
-                                </button>
+                                </a>
                                 {% if not project.is_default %}
                                 <form method="POST" action="{{ url_for('set_default_project', project_id=project.id) }}" style="display: inline;">
                                     <button type="submit" class="btn btn-sm btn-outline-success" title="Set as Default">
@@ -104,97 +102,6 @@
         {% endif %}
     </div>
 </div>
-
-<!-- Add Project Modal -->
-<div class="modal fade" id="addProjectModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="fas fa-plus me-2"></i>Add New Project
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form method="POST" action="{{ url_for('add_project') }}">
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="projectName" class="form-label">Project Name *</label>
-                        <input type="text" 
-                               class="form-control" 
-                               id="projectName" 
-                               name="name" 
-                               required 
-                               placeholder="Enter project name">
-                    </div>
-                    <div class="mb-3">
-                        <label for="projectDescription" class="form-label">Description</label>
-                        <textarea class="form-control" 
-                                  id="projectDescription" 
-                                  name="description" 
-                                  rows="3" 
-                                  placeholder="Optional project description"></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save me-2"></i>Create Project
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Edit Project Modals -->
-{% for project in projects %}
-<div class="modal fade" id="editProjectModal{{ project.id }}" tabindex="-1" aria-labelledby="editProjectModalLabel{{ project.id }}" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="editProjectModalLabel{{ project.id }}">
-                    <i class="fas fa-edit me-2"></i>Edit Project: {{ project.name }}
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form method="POST" action="{{ url_for('edit_project', project_id=project.id) }}" id="editProjectForm{{ project.id }}">
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="editProjectName{{ project.id }}" class="form-label">Project Name *</label>
-                        <input type="text" 
-                               class="form-control edit-project-name" 
-                               id="editProjectName{{ project.id }}" 
-                               name="name" 
-                               required 
-                               value="{{ project.name }}"
-                               placeholder="Enter project name"
-                               autocomplete="off"
-                               data-project-id="{{ project.id }}">
-                    </div>
-                    <div class="mb-3">
-                        <label for="editProjectDescription{{ project.id }}" class="form-label">Description</label>
-                        <textarea class="form-control edit-project-description" 
-                                  id="editProjectDescription{{ project.id }}" 
-                                  name="description" 
-                                  rows="3" 
-                                  placeholder="Optional project description"
-                                  autocomplete="off"
-                                  data-project-id="{{ project.id }}">{{ project.description or '' }}</textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="fas fa-times me-2"></i>Cancel
-                    </button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save me-2"></i>Update Project
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-{% endfor %}
 
 <!-- Delete Project Modals -->
 {% for project in projects %}
@@ -287,173 +194,37 @@
 .project-actions {
     white-space: nowrap;
 }
-
-/* Ensure modal form inputs are always editable */
-.modal .form-control {
-    pointer-events: auto !important;
-    user-select: auto !important;
-    -webkit-user-select: auto !important;
-    -moz-user-select: auto !important;
-    -ms-user-select: auto !important;
-}
-
-.modal input[type="text"], 
-.modal textarea {
-    background-color: #fff !important;
-    border: 1px solid #ced4da !important;
-    color: #212529 !important;
-}
-
-.modal input[type="text"]:focus, 
-.modal textarea:focus {
-    border-color: #86b7fe !important;
-    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
-}
-
-/* Specific styles for edit project inputs */
-.edit-project-name,
-.edit-project-description {
-    background-color: #ffffff !important;
-    border: 1px solid #dee2e6 !important;
-    color: #495057 !important;
-    cursor: text !important;
-    pointer-events: auto !important;
-    user-select: text !important;
-    -webkit-user-select: text !important;
-    -moz-user-select: text !important;
-    -ms-user-select: text !important;
-}
-
-.edit-project-name:focus,
-.edit-project-description:focus {
-    background-color: #ffffff !important;
-    border-color: #80bdff !important;
-    outline: 0 !important;
-    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
-}
-
-/* Ensure modal components are always visible and functional */
-.modal-dialog {
-    max-height: calc(100vh - 2rem) !important;
-    margin: 1rem auto !important;
-    display: flex !important;
-    align-items: center !important;
-}
-
-.modal-content {
-    max-height: calc(100vh - 4rem) !important;
-    display: flex !important;
-    flex-direction: column !important;
-    overflow: hidden !important;
-}
-
-.modal-footer {
-    display: flex !important;
-    justify-content: flex-end !important;
-    gap: 0.5rem !important;
-    padding: 1rem !important;
-    border-top: 1px solid #dee2e6 !important;
-    flex-shrink: 0 !important;
-    margin-top: auto !important;
-}
-
-.modal-header {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    padding: 1rem !important;
-    border-bottom: 1px solid #dee2e6 !important;
-    flex-shrink: 0 !important;
-}
-
-.modal-body {
-    padding: 1rem !important;
-    flex: 1 !important;
-    overflow-y: auto !important;
-    max-height: calc(100vh - 12rem) !important;
-}
-
-.btn-close {
-    background: none !important;
-    border: none !important;
-    font-size: 1.5rem !important;
-    cursor: pointer !important;
-    pointer-events: auto !important;
-    position: relative !important;
-    z-index: 1051 !important;
-}
-
-.modal .btn {
-    pointer-events: auto !important;
-    cursor: pointer !important;
-    position: relative !important;
-    z-index: 1050 !important;
-}
-
-.modal-footer .btn {
-    pointer-events: auto !important;
-    cursor: pointer !important;
-    position: relative !important;
-    z-index: 1052 !important;
-    border: 1px solid !important;
-    padding: 0.5rem 1rem !important;
-    font-weight: 500 !important;
-}
-
-.modal-footer .btn:hover {
-    transform: none !important;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-}
-
-/* Force modal to be properly sized */
-.modal.fade .modal-dialog {
-    transform: translate(0, -50px) !important;
-}
-
-.modal.show .modal-dialog {
-    transform: none !important;
-}
-
-/* Ensure edit project modals are properly sized */
-#editProjectModal1 .modal-dialog,
-#editProjectModal2 .modal-dialog,
-#editProjectModal3 .modal-dialog,
-#editProjectModal4 .modal-dialog,
-#editProjectModal5 .modal-dialog,
-[id^="editProjectModal"] .modal-dialog {
-    max-width: 500px !important;
-    height: auto !important;
-    min-height: 500px !important;
-    margin: 1rem auto !important;
-}
-
-[id^="editProjectModal"] .modal-content {
-    height: auto !important;
-    min-height: 450px !important;
-    max-height: 90vh !important;
-}
-
-[id^="editProjectModal"] .modal-footer {
-    position: sticky !important;
-    bottom: 0 !important;
-    background-color: #fff !important;
-    z-index: 1051 !important;
-    box-shadow: 0 -2px 4px rgba(0,0,0,0.1) !important;
-}
-
-/* Override any conflicting styles from base.html */
-.modal-backdrop {
-    z-index: 1040 !important;
-}
-
-.modal {
-    z-index: 1045 !important;
-}
-
-.modal .modal-dialog {
-    z-index: 1046 !important;
-}
 </style>
+
+<script>
+function moveArtifacts(projectId, projectName) {
+    const selectElement = document.getElementById('moveProjectSelect' + projectId);
+    const targetProjectId = selectElement.value;
+    
+    if (!targetProjectId) {
+        alert('Please select a target project');
+        return;
+    }
+    
+    const targetProjectName = selectElement.options[selectElement.selectedIndex].text;
+    
+    if (confirm(`Move all artifacts from "${projectName}" to "${targetProjectName}"?`)) {
+        // Create and submit form
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/projects/${projectId}/move_artifacts`;
+        
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'target_project_id';
+        input.value = targetProjectId;
+        
+        form.appendChild(input);
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
 
 <script>
 function moveArtifacts(projectId, projectName) {
