@@ -9,6 +9,7 @@ class Artifact(Base):
     content = Column(Text, nullable=False)
     images = Column(JSON, default=list)  # Will store list of {name: filename, path: relative_path}
     type_id = Column(Integer, ForeignKey('type.id'))
+    project_id = Column(Integer, ForeignKey('project.id'), nullable=True)  # Allow null for migration
     expiry_date = Column(Date, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow())
     last_notification_sent = Column(DateTime, nullable=True)
