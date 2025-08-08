@@ -12,6 +12,7 @@ import models.artifact
 import models.base
 import models.type
 import models.config
+import models.project
 
 def create_database(session=None, config=None):
     """

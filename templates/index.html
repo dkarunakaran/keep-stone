@@ -62,11 +62,19 @@
             <input type="hidden" name="type" value="{{ type_filter }}">
             <select name="project" class="form-select form-select-sm" onchange="this.form.submit()" style="min-width: 160px;">
                 <option value="all" {% if project_filter == 'all' %}selected{% endif %}>All Projects</option>
-                <option value="default" {% if project_filter == 'default' or not project_filter %}selected{% endif %}>⭐ Default Project</option>
-                {% for project in projects %}
-                <option value="{{ project.id }}" {% if project_filter == project.id|string %}selected{% endif %}>
-                    {{ project.name }}
+                <option value="default" {% if project_filter == 'default' or not project_filter %}selected{% endif %}>
+                    {% if default_project %}
+                        ⭐ {{ default_project.name }}
+                    {% else %}
+                        ⭐ Default Project
+                    {% endif %}
                 </option>
+                {% for project in projects %}
+                    {% if not project.is_default %}
+                    <option value="{{ project.id }}" {% if project_filter == project.id|string %}selected{% endif %}>
+                        {{ project.name }}
+                    </option>
+                    {% endif %}
                 {% endfor %}
             </select>
         </form>
