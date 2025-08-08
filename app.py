@@ -111,10 +111,25 @@ def settings():
         
         # Normal settings update
         try:
+            # Load YAML config to check editability
+            from utils.config_utils import load_config_from_yaml, flatten_dict
+            yaml_config = load_config_from_yaml()
+            flat_config = flatten_dict(yaml_config)
+            
+            # Create a map of config keys to their editability
+            editability_map = {}
+            for key, value, is_editable in flat_config:
+                editability_map[key] = is_editable
+            
             # Get all form data
             updates = {}
             for key in request.form:
                 if key == 'reset_defaults':  # Skip reset button
+                    continue
+                
+                # Check if this config item is editable
+                if not editability_map.get(key, True):
+                    # Skip non-editable items
                     continue
                     
                 value = request.form[key]

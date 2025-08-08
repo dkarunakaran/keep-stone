@@ -1,41 +1,79 @@
 maintainer: Dhanoop Karunakaran
 debug: False
 sql_alchemy:
-  edit: True # It add this section to the config table and settings UI.
-  loc: '/app/db'
-  db: 'data.db'
+  loc: 
+    value: '/app/db'
+    edit: False  # Not editable - system path
+  db: 
+    value: 'data.db'
+    edit: True   # Editable
 type: 
   - 'Token'
   - 'Troubleshoot'
   - 'Information'
   - 'Other'
 general:
-  edit: True # It add this section to the config table and settings UI.
-  default_type: 'Token'
+  default_type: 
+    value: 'Token'
+    edit: True   # Editable
 trim:
-  edit: True # It add this section to the config table and settings UI.
-  name: 15
-  content: 100
-  extra: 7
+  name: 
+    value: 15
+    edit: True   # Editable
+  content: 
+    value: 100
+    edit: True   # Editable
+  extra: 
+    value: 7
+    edit: True   # Editable
 email:
-  edit: True # It add this section to the config table and settings UI.
-  smtp_server: 'smtp.gmail.com'
-  smtp_port: 587
-  notification_days: 10  # Start notifications when X days remain
-  max_notifications: 3   # Maximum number of notifications per token
-  notification_interval: 24  # Hours between notifications
-  timezone: 'Australia/Sydney'
+  smtp_server: 
+    value: 'smtp.gmail.com'
+    edit: False  # Not editable - system configuration
+  smtp_port: 
+    value: 587
+    edit: True   # Editable
+  notification_days: 
+    value: 10    # Start notifications when X days remain
+    edit: True   # Editable
+  max_notifications: 
+    value: 3     # Maximum number of notifications per token
+    edit: True   # Editable
+  notification_interval: 
+    value: 24    # Hours between notifications
+    edit: True   # Editable
+  timezone: 
+    value: 'Australia/Sydney'
+    edit: True   # Editable
 storage:
-  edit: True # It add this section to the config table and settings UI.
-  image_path: "static/uploads"  # Relative to app root
-  allowed_extensions: ["jpg", "jpeg", "png", "gif"]
-  max_file_size: 5242880  # 5MB in bytes
-  cleanup_threshold_hours: 3  # Delete files older than the threshold
+  image_path: 
+    value: "static/uploads"  # Relative to app root
+    edit: False  # Not editable - system path
+  allowed_extensions: 
+    value: ["jpg", "jpeg", "png", "gif"]
+    edit: True   # Editable
+  max_file_size: 
+    value: 5242880  # 5MB in bytes
+    edit: True   # Editable
+  cleanup_threshold_hours: 
+    value: 3     # Delete files older than the threshold
+    edit: True   # Editable
 backup:
-  edit: True # It add this section to the config table and settings UI.
-  enabled: True  # Enable weekly backups
-  backup_path: "/app/backups"  # Where to store backup files
-  keep_backups: 4  # Number of backup files to keep (4 weeks)
-  backup_database: True  # Backup the SQLite database
-  backup_images: True  # Backup uploaded images (can be large)
-  backup_day: "monday"  # Day of week to run backup (monday, tuesday, etc.)
+  enabled: 
+    value: True  # Enable weekly backups
+    edit: True   # Editable
+  backup_path: 
+    value: "/app/backups"  # Where to store backup files
+    edit: False  # Not editable - system path
+  keep_backups: 
+    value: 4     # Number of backup files to keep (4 weeks)
+    edit: True   # Editable
+  backup_database: 
+    value: True  # Backup the SQLite database
+    edit: True   # Editable
+  backup_images: 
+    value: True  # Backup uploaded images (can be large)
+    edit: True   # Editable
+  backup_day: 
+    value: "monday"  # Day of week to run backup (monday, tuesday, etc.)
+    edit: True   # Editable

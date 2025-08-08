@@ -56,6 +56,31 @@
         box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
     }
     
+    .config-input:disabled {
+        background-color: #f9fafb;
+        color: #6b7280;
+        border-color: #d1d5db;
+        cursor: not-allowed;
+        opacity: 0.7;
+    }
+    
+    .config-input:disabled:focus {
+        box-shadow: none;
+        border-color: #d1d5db;
+    }
+    
+    .config-group.disabled {
+        opacity: 0.8;
+    }
+    
+    .config-group.disabled .config-label::after {
+        content: " (System Setting)";
+        font-size: 0.75rem;
+        color: #9ca3af;
+        font-weight: normal;
+        font-style: italic;
+    }
+    
     .section-title {
         color: #1f2937;
         font-size: 1.25rem;
@@ -137,7 +162,7 @@
             </h3>
             
             {% for item in items %}
-            <div class="config-group">
+            <div class="config-group{% if not item.editable %} disabled{% endif %}">
                 <label class="config-label">{{ item.title }}</label>
                 <div class="config-description">{{ item.description }}</div>
                 
@@ -146,14 +171,15 @@
                            name="{{ item.key }}" 
                            value="{{ item.display_value }}" 
                            class="config-input"
-                           min="1">
+                           min="1"
+                           {% if not item.editable %}disabled{% endif %}>
                 {% elif item.input_type == 'boolean' %}
-                    <select name="{{ item.key }}" class="config-input">
+                    <select name="{{ item.key }}" class="config-input"{% if not item.editable %} disabled{% endif %}>
                         <option value="true" {% if item.display_value.lower() == 'true' %}selected{% endif %}>True</option>
                         <option value="false" {% if item.display_value.lower() == 'false' %}selected{% endif %}>False</option>
                     </select>
                 {% elif item.input_type == 'select' %}
-                    <select name="{{ item.key }}" class="config-input">
+                    <select name="{{ item.key }}" class="config-input"{% if not item.editable %} disabled{% endif %}>
                         {% for option in item.options %}
                         <option value="{{ option }}" {% if item.display_value == option %}selected{% endif %}>{{ option }}</option>
                         {% endfor %}
@@ -163,7 +189,8 @@
                            name="{{ item.key }}" 
                            value="{{ item.display_value }}" 
                            class="config-input"
-                           {% if item.key == 'type' %}placeholder="Token, Troubleshoot, Information, Other"{% endif %}>
+                           {% if item.key == 'type' %}placeholder="Token, Troubleshoot, Information, Other"{% endif %}
+                           {% if not item.editable %}disabled{% endif %}>
                 {% endif %}
             </div>
             {% endfor %}
@@ -207,5 +234,27 @@ function resetToDefaults() {
         form.submit();
     }
 }
+
+// Ensure disabled fields are not submitted and add visual feedback
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('settingsForm');
+    if (form) {
+        // Add form submission handler
+        form.addEventListener('submit', function(e) {
+            // Remove disabled fields from form data (extra security)
+            const disabledInputs = form.querySelectorAll('input:disabled, select:disabled');
+            disabledInputs.forEach(input => {
+                input.removeAttribute('name');
+            });
+        });
+        
+        // Add tooltips to disabled fields
+        const disabledInputs = form.querySelectorAll('input:disabled, select:disabled');
+        disabledInputs.forEach(input => {
+            input.title = 'This is a system setting and cannot be modified through the UI';
+            input.style.cursor = 'not-allowed';
+        });
+    }
+});
 </script>
 {% endblock %}
