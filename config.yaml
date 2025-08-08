@@ -37,5 +37,5 @@ backup:
   backup_path: "/app/backups"  # Where to store backup files
   keep_backups: 4  # Number of backup files to keep (4 weeks)
   backup_database: True  # Backup the SQLite database
-  backup_images: False  # Backup uploaded images (can be large)
+  backup_images: True  # Backup uploaded images (can be large)
   backup_day: "monday"  # Day of week to run backup (monday, tuesday, etc.)

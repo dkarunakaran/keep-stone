@@ -193,6 +193,7 @@ def index():
     
     # Get projects for dropdown
     projects = get_all_projects()
+    default_project = get_default_project()
     
     return render_template('index.html', 
                          artifacts=artifacts,
@@ -202,6 +203,7 @@ def index():
                          today=date.today(),
                          types=types,
                          projects=projects,
+                         default_project=default_project,
                          config=config,
                          types_dict=types_dict)
 
@@ -247,6 +249,7 @@ def search():
     
     # Get projects for dropdown
     projects = get_all_projects()
+    default_project = get_default_project()
     
     return render_template('search.html', 
                          artifacts=artifacts,
@@ -256,6 +259,7 @@ def search():
                          today=date.today(),
                          types=types,
                          projects=projects,
+                         default_project=default_project,
                          config=config,
                          types_dict=types_dict)
 
