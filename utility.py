@@ -13,6 +13,7 @@ import models.base
 import models.type
 import models.config
 import models.project
+import models.user
 
 def create_database(session=None, config=None):
     """

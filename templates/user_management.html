@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+
+{% block title %}User Management - KeepStone{% endblock %}
+
+{% block head %}
+{{ super() }}
+<style>
+    .user-management-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    
+    .user-section {
+        background: white;
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .section-title {
+        color: #1f2937;
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .user-management-section {
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        background-color: #f9fafb;
+    }
+    
+    .table th {
+        background-color: #f8f9fa;
+        border-color: #dee2e6;
+    }
+    
+    .badge {
+        font-size: 0.75rem;
+    }
+    
+    .btn-group-sm .btn {
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .stats-card {
+        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        color: white;
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        text-align: center;
+        margin-bottom: 1rem;
+    }
+    
+    .stats-number {
+        font-size: 2rem;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stats-label {
+        font-size: 0.875rem;
+        opacity: 0.9;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="user-management-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">
+            <i class="fas fa-users me-2"></i>User Management
+        </h2>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+            </a>
+        </div>
+    </div>
+    
+    <!-- User Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="stats-number">{{ users_data|length }}</div>
+                <div class="stats-label">Total Users</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="stats-number">{{ users_data|selectattr('is_admin')|list|length }}</div>
+                <div class="stats-label">Admin Users</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="stats-number">{{ users_data|selectattr('is_active')|list|length }}</div>
+                <div class="stats-label">Active Users</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="stats-number">{{ users_data|rejectattr('is_active')|list|length }}</div>
+                <div class="stats-label">Inactive Users</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add New User Form -->
+    <div class="user-section">
+        <h3 class="section-title">
+            <i class="fas fa-user-plus text-success"></i>
+            Add New User
+        </h3>
+        
+        <div class="user-management-section">
+            <form method="POST" action="{{ url_for('add_user') }}" class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Username</label>
+                    <input type="text" name="username" class="form-control" required 
+                           placeholder="Enter username" pattern="[a-zA-Z0-9_-]+"
+                           title="Username can only contain letters, numbers, hyphens, and underscores">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Email</label>
+                    <input type="email" name="email" class="form-control" required 
+                           placeholder="user@example.com">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Full Name</label>
+                    <input type="text" name="full_name" class="form-control" required 
+                           placeholder="Enter full name">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Password</label>
+                    <input type="password" name="password" class="form-control" required 
+                           placeholder="Minimum 6 characters" minlength="6">
+                </div>
+                <div class="col-md-12">
+                    <label class="form-label">Notes (Optional)</label>
+                    <textarea name="notes" class="form-control" rows="2" 
+                              placeholder="Additional notes about this user"></textarea>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-check">
+                        <input type="checkbox" name="is_admin" class="form-check-input" id="new_user_admin">
+                        <label class="form-check-label" for="new_user_admin">
+                            <i class="fas fa-shield-alt text-warning me-1"></i>Admin User
+                        </label>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-check">
+                        <input type="checkbox" name="is_active" class="form-check-input" id="new_user_active" checked>
+                        <label class="form-check-label" for="new_user_active">
+                            <i class="fas fa-check-circle text-success me-1"></i>Active Account
+                        </label>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-user-plus me-2"></i>Create User
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Existing Users List -->
+    <div class="user-section">
+        <h3 class="section-title">
+            <i class="fas fa-users text-info"></i>
+            Existing Users ({{ users_data|length }})
+        </h3>
+        
+        <div class="user-management-section">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>User</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Last Login</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users_data %}
+                        <tr>
+                            <td>
+                                <div class="d-flex flex-column">
+                                    <strong>{{ user.full_name }}</strong>
+                                    <small class="text-muted">
+                                        <i class="fas fa-user me-1"></i>{{ user.username }}
+                                        <br>
+                                        <i class="fas fa-envelope me-1"></i>{{ user.email }}
+                                    </small>
+                                    {% if user.notes %}
+                                    <small class="text-info">
+                                        <i class="fas fa-sticky-note me-1"></i>{{ user.notes[:50] }}{% if user.notes|length > 50 %}...{% endif %}
+                                    </small>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                {% if user.is_admin %}
+                                <span class="badge bg-warning">
+                                    <i class="fas fa-shield-alt me-1"></i>Admin
+                                </span>
+                                {% else %}
+                                <span class="badge bg-secondary">
+                                    <i class="fas fa-user me-1"></i>User
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if user.is_active %}
+                                <span class="badge bg-success">
+                                    <i class="fas fa-check-circle me-1"></i>Active
+                                </span>
+                                {% else %}
+                                <span class="badge bg-danger">
+                                    <i class="fas fa-times-circle me-1"></i>Inactive
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small>{{ user.last_login }}</small>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <!-- Edit Button -->
+                                    <a href="{{ url_for('edit_user', user_id=user.id) }}" 
+                                       class="btn btn-outline-primary btn-sm">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    
+                                    <!-- Delete Button (not for current user) -->
+                                    {% if user.id != current_user.id %}
+                                    <button type="button" class="btn btn-outline-danger btn-sm" 
+                                            onclick="confirmDeleteUser('{{ user.username }}', {{ user.id }})">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmDeleteUser(username, userId) {
+    if (confirm(`Are you sure you want to delete user "${username}"? This action cannot be undone.`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/users/${userId}/delete`;
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+{% endblock %}

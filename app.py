@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, make_response, abort
 from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from datetime import datetime, date
 import os
 import utility
@@ -12,6 +13,7 @@ from flask import send_from_directory
 from utility import save_image, delete_image
 from dotenv import load_dotenv
 from utils.config_utils import load_config, update_config, get_config_for_settings, get_section_title, get_section_icon, reset_config_to_defaults
+from utils.auth_utils import admin_required, active_user_required, get_safe_redirect_url, init_default_admin, validate_user_data, check_unique_user_fields, format_user_for_display
 
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage, PageBreak, Table, TableStyle
@@ -36,6 +38,7 @@ import models.artifact
 import models.type
 import models.config
 import models.project
+import models.user
 
 # Fix for template rendering
 import sys
@@ -45,6 +48,18 @@ load_dotenv()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY')
+
+# Initialize Flask-Login
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+login_manager.login_message = 'Please log in to access this page.'
+login_manager.login_message_category = 'info'
+
+@login_manager.user_loader
+def load_user(user_id):
+    """Load user for Flask-Login"""
+    return session.query(User).get(int(user_id))
 
 # Create instance directory if it doesn't exist
 instance_path = '/app/instance'
@@ -68,6 +83,10 @@ session = Session()
 Artifact = models.artifact.Artifact
 Type = models.type.Type
 Project = models.project.Project
+User = models.user.User
+
+# Initialize default admin user if no users exist
+init_default_admin(session, User)
 
 # Make date available in templates
 @app.context_processor
@@ -90,7 +109,58 @@ markdowner = Markdown(extras=["tables", "fenced-code-blocks"])
 def markdown_filter(text):
     return markdowner.convert(text)
 
+# Authentication Routes
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """User login page"""
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+        remember_me = request.form.get('remember_me') == 'on'
+        
+        if not username or not password:
+            flash('Please enter both username and password.', 'error')
+            return render_template('login.html')
+        
+        # Find user by username
+        user = session.query(User).filter(User.username == username).first()
+        
+        if user and user.check_password(password):
+            if not user.is_active:
+                flash('Your account has been deactivated. Please contact an administrator.', 'error')
+                return render_template('login.html')
+            
+            # Update last login time
+            user.update_last_login()
+            session.commit()
+            
+            # Log in the user
+            login_user(user, remember=remember_me)
+            
+            flash(f'Welcome back, {user.full_name}!', 'success')
+            
+            # Redirect to next page or index
+            next_page = request.args.get('next')
+            return redirect(get_safe_redirect_url(next_page))
+        else:
+            flash('Invalid username or password.', 'error')
+    
+    return render_template('login.html')
+
+@app.route('/logout')
+@login_required
+def logout():
+    """User logout"""
+    logout_user()
+    flash('You have been logged out successfully.', 'info')
+    return redirect(url_for('login'))
+
 @app.route('/settings', methods=['GET', 'POST'])
+@login_required
+@active_user_required
 def settings():
     global config
     
@@ -165,9 +235,179 @@ def settings():
     
     # Get all config items for display
     config_items = get_config_for_settings()
+    
+    # Get user management data if user is admin
+    
     return render_template('settings.html', config_items=config_items)
 
+@app.route('/user-management')
+@login_required
+@active_user_required
+@admin_required
+def user_management():
+    """User management page (admin only)"""
+    # Get all users for display
+    all_users = session.query(User).order_by(User.created_at.desc()).all()
+    users_data = [format_user_for_display(user) for user in all_users]
+    
+    return render_template('user_management.html', users_data=users_data)
+
+# User Management Routes (Admin Only)
+@app.route('/users/add', methods=['POST'])
+@login_required
+@active_user_required
+@admin_required
+def add_user():
+    """Add new user (admin only)"""
+    username = request.form.get('username', '').strip()
+    email = request.form.get('email', '').strip()
+    password = request.form.get('password', '')
+    full_name = request.form.get('full_name', '').strip()
+    is_admin = request.form.get('is_admin') == 'on'
+    is_active = request.form.get('is_active') == 'on'
+    notes = request.form.get('notes', '').strip()
+    
+    # Validate input data
+    errors = validate_user_data(username, email, password, full_name)
+    if errors:
+        for error in errors:
+            flash(error, 'error')
+        return redirect(url_for('user_management'))
+    
+    # Check uniqueness
+    unique_errors = check_unique_user_fields(session, User, username, email)
+    if unique_errors:
+        for error in unique_errors:
+            flash(error, 'error')
+        return redirect(url_for('user_management'))
+    
+    try:
+        # Create new user
+        new_user = User(
+            username=username,
+            email=email,
+            password=password,
+            full_name=full_name,
+            is_admin=is_admin,
+            is_active=is_active,
+            notes=notes or None
+        )
+        
+        session.add(new_user)
+        session.commit()
+        
+        flash(f'User "{username}" created successfully!', 'success')
+        
+    except Exception as e:
+        session.rollback()
+        flash(f'Error creating user: {str(e)}', 'error')
+    
+    return redirect(url_for('user_management'))
+
+@app.route('/users/<int:user_id>/edit', methods=['GET', 'POST'])
+@login_required
+@active_user_required
+@admin_required
+def edit_user(user_id):
+    """Edit existing user (admin only)"""
+    user = session.query(User).get(user_id)
+    if not user:
+        flash('User not found.', 'error')
+        return redirect(url_for('user_management'))
+    
+    if request.method == 'GET':
+        # Show edit form
+        return render_template('edit_user.html', user=user)
+    
+    # Handle POST request (form submission)
+    # Prevent admin from disabling their own account
+    if user.id == current_user.id and request.form.get('is_active') != 'on':
+        flash('You cannot deactivate your own account.', 'error')
+        return redirect(url_for('user_management'))
+    
+    username = request.form.get('username', '').strip()
+    email = request.form.get('email', '').strip()
+    password = request.form.get('password', '')
+    full_name = request.form.get('full_name', '').strip()
+    is_admin = request.form.get('is_admin') == 'on'
+    is_active = request.form.get('is_active') == 'on'
+    notes = request.form.get('notes', '').strip()
+    
+    # Validate input data
+    errors = validate_user_data(username, email, password, full_name, is_editing=True)
+    if errors:
+        for error in errors:
+            flash(error, 'error')
+        return redirect(url_for('user_management'))
+    
+    # Check uniqueness (excluding current user)
+    unique_errors = check_unique_user_fields(session, User, username, email, exclude_user_id=user_id)
+    if unique_errors:
+        for error in unique_errors:
+            flash(error, 'error')
+        return redirect(url_for('user_management'))
+    
+    try:
+        # Update user
+        user.username = username
+        user.email = email
+        user.full_name = full_name
+        user.is_admin = is_admin
+        user.is_active = is_active
+        user.notes = notes or None
+        
+        # Update password if provided
+        if password:
+            user.set_password(password)
+        
+        session.commit()
+        
+        flash(f'User "{username}" updated successfully!', 'success')
+        
+    except Exception as e:
+        session.rollback()
+        flash(f'Error updating user: {str(e)}', 'error')
+    
+    return redirect(url_for('user_management'))
+
+@app.route('/users/<int:user_id>/delete', methods=['POST'])
+@login_required
+@active_user_required
+@admin_required
+def delete_user(user_id):
+    """Delete user (admin only)"""
+    user = session.query(User).get(user_id)
+    if not user:
+        flash('User not found.', 'error')
+        return redirect(url_for('user_management'))
+    
+    # Prevent admin from deleting their own account
+    if user.id == current_user.id:
+        flash('You cannot delete your own account.', 'error')
+        return redirect(url_for('user_management'))
+    
+    # Check if this is the last admin user
+    admin_count = session.query(User).filter(User.is_admin == True, User.is_active == True).count()
+    if user.is_admin and admin_count <= 1:
+        flash('Cannot delete the last active admin user.', 'error')
+        return redirect(url_for('user_management'))
+    
+    try:
+        username = user.username
+        session.delete(user)
+        session.commit()
+        
+        flash(f'User "{username}" deleted successfully!', 'success')
+        
+    except Exception as e:
+        session.rollback()
+        flash(f'Error deleting user: {str(e)}', 'error')
+    
+    return redirect(url_for('user_management'))
+
 @app.route('/')
+@login_required
+@active_user_required
 def index():
     type_filter = request.args.get('type', '')  # Changed to empty string default
     project_filter = request.args.get('project', 'default')  # Default to showing default project
@@ -223,6 +463,8 @@ def index():
                          types_dict=types_dict)
 
 @app.route('/search')
+@login_required
+@active_user_required
 def search():
     search_query = request.args.get('search', '').strip()
     type_filter = request.args.get('type', '')
@@ -280,6 +522,8 @@ def search():
 
 
 @app.route('/add', methods=['GET', 'POST'])
+@login_required
+@active_user_required
 def add_artifact():
     if request.method == 'POST':
         try:
@@ -362,6 +606,8 @@ def add_artifact():
                          default_project_id=get_default_project_id())
 
 @app.route('/delete/<int:artifact_id>', methods=['POST'])
+@login_required
+@active_user_required
 def delete_artifact(artifact_id):
     artifact = session.query(Artifact).get(artifact_id)
     if artifact:
@@ -372,6 +618,8 @@ def delete_artifact(artifact_id):
     return redirect(url_for('index'))
 
 @app.route('/update/<int:artifact_id>', methods=['GET', 'POST'])
+@login_required
+@active_user_required
 def update_artifact(artifact_id):
     artifact = session.query(Artifact).filter(Artifact.id==artifact_id).first()
     if request.method == 'POST':
@@ -433,6 +681,8 @@ def update_artifact(artifact_id):
     return render_template('update_artifact.html', artifact=artifact, types=types)
 
 @app.route('/artifact/<int:artifact_id>')
+@login_required
+@active_user_required
 def artifact_detail(artifact_id):
     artifact = session.query(Artifact).filter(Artifact.id==artifact_id).first()
     if not artifact:
@@ -510,6 +760,8 @@ def clean_markdown_for_pdf(text):
     return html
 
 @app.route('/artifact/<int:artifact_id>/export/pdf')
+@login_required
+@active_user_required
 def export_artifact_pdf(artifact_id):
     artifact = session.query(Artifact).filter_by(id=artifact_id).first()
     if not artifact:
@@ -826,6 +1078,8 @@ def get_all_projects():
 
 # Project management routes
 @app.route('/projects')
+@login_required
+@active_user_required
 def projects():
     """List all projects"""
     projects = get_all_projects()
@@ -846,6 +1100,8 @@ def projects():
                          project_artifacts=project_artifacts)
 
 @app.route('/projects/add', methods=['GET', 'POST'])
+@login_required
+@active_user_required
 def add_project():
     """Add a new project"""
     if request.method == 'GET':
@@ -877,6 +1133,8 @@ def add_project():
         return render_template('add_project.html')
 
 @app.route('/projects/<int:project_id>/set_default', methods=['POST'])
+@login_required
+@active_user_required
 def set_default_project(project_id):
     """Set a project as default"""
     try:
@@ -895,6 +1153,8 @@ def set_default_project(project_id):
     return redirect(url_for('projects'))
 
 @app.route('/projects/<int:project_id>/delete', methods=['POST'])
+@login_required
+@active_user_required
 def delete_project(project_id):
     """Delete a project"""
     try:
@@ -930,6 +1190,8 @@ def delete_project(project_id):
     return redirect(url_for('projects'))
 
 @app.route('/projects/<int:project_id>/edit', methods=['GET', 'POST'])
+@login_required
+@active_user_required
 def edit_project(project_id):
     """Edit a project"""
     project = session.query(Project).get(project_id)
@@ -1011,6 +1273,8 @@ def edit_project(project_id):
                              project_artifacts=project_artifacts)
 
 @app.route('/projects/<int:project_id>/move_artifacts', methods=['POST'])
+@login_required
+@active_user_required
 def move_artifacts(project_id):
     """Move all artifacts from one project to another"""
     try:
