@@ -38,7 +38,9 @@ import models.artifact
 import models.type
 import models.config
 import models.project
+import models.project_member
 import models.user
+import models.project_member
 
 # Fix for template rendering
 import sys
@@ -78,12 +80,21 @@ initialize_config()
 
 # Create database if it doesn't exist
 utility.create_database(config=config)
+
+# Run database migration to add new columns
+try:
+    utility.migrate_database()
+    utility.migrate_user_default_projects()
+except Exception as e:
+    print(f"Warning: Migration failed: {e}")
+
 Session = sessionmaker(bind=models.base.engine)
 session = Session()
 Artifact = models.artifact.Artifact
 Type = models.type.Type
 Project = models.project.Project
 User = models.user.User
+ProjectMember = models.project_member.ProjectMember
 
 # Initialize default admin user if no users exist
 init_default_admin(session, User)
@@ -430,14 +441,24 @@ def index():
     
     # Apply project filter
     if project_filter == 'default':
-        # Show only default project artifacts
-        default_project_id = get_default_project_id()
-        if default_project_id:
-            query = query.filter(Artifact.project_id == default_project_id)
+        # Show only user's personal default project artifacts, but only if user has access
+        user_default_project_id = get_user_default_project_id()
+        if user_default_project_id and user_has_project_access(user_default_project_id):
+            query = query.filter(Artifact.project_id == user_default_project_id)
+        else:
+            # User doesn't have a personal default project or access to it, show no artifacts
+            query = query.filter(Artifact.id == -1)
     elif project_filter and project_filter != 'all':
         # Show specific project artifacts
         query = query.filter(Artifact.project_id == project_filter)
-    # If project_filter is 'all', don't add project filter (show all projects)
+    else:
+        # If project_filter is 'all' or not specified, show only artifacts from accessible projects
+        accessible_project_ids = get_user_accessible_project_ids()
+        if accessible_project_ids:
+            query = query.filter(Artifact.project_id.in_(accessible_project_ids))
+        else:
+            # User has no accessible projects, show no artifacts
+            query = query.filter(Artifact.id == -1)
     
     # Get final results
     artifacts = query.order_by(Artifact.expiry_date.asc()).all()
@@ -448,7 +469,7 @@ def index():
     
     # Get projects for dropdown
     projects = get_all_projects()
-    default_project = get_default_project()
+    default_project = get_user_default_project()
     
     return render_template('index.html', 
                          artifacts=artifacts,
@@ -488,14 +509,24 @@ def search():
     
     # Apply project filter
     if project_filter == 'default':
-        # Search only in default project
-        default_project_id = get_default_project_id()
-        if default_project_id:
-            query = query.filter(Artifact.project_id == default_project_id)
+        # Search only in user's personal default project, but only if user has access
+        user_default_project_id = get_user_default_project_id()
+        if user_default_project_id and user_has_project_access(user_default_project_id):
+            query = query.filter(Artifact.project_id == user_default_project_id)
+        else:
+            # User doesn't have a personal default project or access to it, show no artifacts
+            query = query.filter(Artifact.id == -1)
     elif project_filter and project_filter != 'all':
         # Search in specific project
         query = query.filter(Artifact.project_id == project_filter)
-    # If project_filter is 'all' or empty, don't add project filter (search all projects)
+    else:
+        # If project_filter is 'all' or empty, search only in accessible projects
+        accessible_project_ids = get_user_accessible_project_ids()
+        if accessible_project_ids:
+            query = query.filter(Artifact.project_id.in_(accessible_project_ids))
+        else:
+            # User has no accessible projects, show no artifacts
+            query = query.filter(Artifact.id == -1)
     
     # Get final results
     artifacts = query.order_by(Artifact.expiry_date.asc()).all()
@@ -506,7 +537,7 @@ def search():
     
     # Get projects for dropdown
     projects = get_all_projects()
-    default_project = get_default_project()
+    default_project = get_user_default_project()
     
     return render_template('search.html', 
                          artifacts=artifacts,
@@ -557,10 +588,10 @@ def add_artifact():
                         'path': relative_path
                     })
             
-            # Get project assignment (use form value or default)
+            # Get project assignment (use form value or user's accessible default)
             project_id = request.form.get('project_id')
             if not project_id:
-                project_id = get_default_project_id()
+                project_id = get_user_default_project_id()
             
             # Create artifact with image metadata
             artifact = Artifact(
@@ -603,18 +634,26 @@ def add_artifact():
                          types=types, 
                          projects=projects,
                          default_type_id=default_type_id,
-                         default_project_id=get_default_project_id())
+                         default_project_id=get_user_default_project_id())
 
 @app.route('/delete/<int:artifact_id>', methods=['POST'])
 @login_required
 @active_user_required
 def delete_artifact(artifact_id):
     artifact = session.query(Artifact).get(artifact_id)
-    if artifact:
-        # Soft delete instead of hard delete
-        artifact.soft_delete()
-        session.commit()
-        flash('Artifact has been moved to trash', 'info')
+    if not artifact:
+        flash('Artifact not found!', 'error')
+        return redirect(url_for('index'))
+    
+    # Check if user has access to this artifact's project
+    if not user_has_project_access(artifact.project_id):
+        flash('You do not have access to delete this artifact.', 'error')
+        return redirect(url_for('index'))
+    
+    # Soft delete instead of hard delete
+    artifact.soft_delete()
+    session.commit()
+    flash('Artifact has been moved to trash', 'info')
     return redirect(url_for('index'))
 
 @app.route('/update/<int:artifact_id>', methods=['GET', 'POST'])
@@ -622,6 +661,14 @@ def delete_artifact(artifact_id):
 @active_user_required
 def update_artifact(artifact_id):
     artifact = session.query(Artifact).filter(Artifact.id==artifact_id).first()
+    if not artifact:
+        flash('Artifact not found!', 'error')
+        return redirect(url_for('index'))
+    
+    # Check if user has access to this artifact's project
+    if not user_has_project_access(artifact.project_id):
+        flash('You do not have access to edit this artifact.', 'error')
+        return redirect(url_for('index'))
     if request.method == 'POST':
         try:
             # Update basic info
@@ -687,6 +734,11 @@ def artifact_detail(artifact_id):
     artifact = session.query(Artifact).filter(Artifact.id==artifact_id).first()
     if not artifact:
         flash('Artifact not found!', 'error')
+        return redirect(url_for('index'))
+    
+    # Check if user has access to this artifact's project
+    if not user_has_project_access(artifact.project_id):
+        flash('You do not have access to this artifact.', 'error')
         return redirect(url_for('index'))
     
     # Get type name
@@ -766,6 +818,11 @@ def export_artifact_pdf(artifact_id):
     artifact = session.query(Artifact).filter_by(id=artifact_id).first()
     if not artifact:
         abort(404)
+    
+    # Check if user has access to this artifact's project
+    if not user_has_project_access(artifact.project_id):
+        flash('You do not have access to export this artifact.', 'error')
+        return redirect(url_for('index'))
     
     try:
         # Create PDF buffer
@@ -1064,30 +1121,131 @@ def export_artifact_pdf(artifact_id):
 
 # Helper functions for project management
 def get_default_project():
-    """Get the default project"""
+    """Get the default project (system-wide, regardless of user access)"""
     return session.query(Project).filter(Project.is_default == True).first()
 
 def get_default_project_id():
-    """Get the default project ID"""
+    """Get the default project ID (system-wide, regardless of user access)"""
     default_project = get_default_project()
     return default_project.id if default_project else None
 
+def get_user_default_project():
+    """Get the current user's personal default project only if they have access to it"""
+    if not current_user.is_authenticated:
+        return None
+    return current_user.get_default_project(session)
+
+def get_user_default_project_id():
+    """Get the current user's personal default project ID only if they have access to it"""
+    user_default_project = get_user_default_project()
+    return user_default_project.id if user_default_project else None
+
+def get_user_accessible_projects():
+    """Get projects accessible to the current user"""
+    # All users (including admin) only see projects they're members of
+    project_memberships = session.query(ProjectMember).filter_by(
+        user_id=current_user.id,
+        is_active=True
+    ).all()
+    
+    project_ids = [m.project_id for m in project_memberships]
+    if project_ids:
+        return session.query(Project).filter(Project.id.in_(project_ids)).order_by(Project.name).all()
+    else:
+        return []
+
+def get_user_accessible_project_ids():
+    """Get project IDs accessible to the current user"""
+    # All users (including admin) only see projects they're members of
+    project_memberships = session.query(ProjectMember).filter_by(
+        user_id=current_user.id,
+        is_active=True
+    ).all()
+    return [m.project_id for m in project_memberships]
+
+def user_has_project_access(project_id):
+    """Check if current user has access to a specific project"""
+    # For artifact access, admin still has full access for management purposes
+    if current_user.is_admin:
+        return True
+    
+    membership = session.query(ProjectMember).filter_by(
+        user_id=current_user.id,
+        project_id=project_id,
+        is_active=True
+    ).first()
+    
+    return membership is not None
+
 def get_all_projects():
-    """Get all projects ordered by name"""
-    return session.query(Project).order_by(Project.name).all()
+    """Get all projects accessible to the current user"""
+    return get_user_accessible_projects()
 
 # Project management routes
 @app.route('/projects')
 @login_required
 @active_user_required
 def projects():
-    """List all projects"""
-    projects = get_all_projects()
+    """List all projects accessible to the user"""
+    # Get projects based on user role and permissions
+    if current_user.is_admin:
+        # Admin can see all projects
+        projects = session.query(Project).order_by(Project.created_at.desc()).all()
+        # Get project ownership and member info for each project
+        project_data = []
+        for project in projects:
+            members = project.get_members(session)
+            owner_membership = project.get_owner(session)
+            
+            # Get owner user object safely
+            owner_user = None
+            if owner_membership and owner_membership.user:
+                owner_user = owner_membership.user
+            
+            project_info = {
+                'project': project,
+                'owner': owner_membership,
+                'owner_user': owner_user,
+                'member_count': len(members),
+                'is_member': any(m.user_id == current_user.id for m in members),
+                'is_owner': owner_membership and owner_membership.user_id == current_user.id
+            }
+            project_data.append(project_info)
+    else:
+        # Regular user sees only projects they're a member of
+        project_memberships = session.query(ProjectMember).filter_by(
+            user_id=current_user.id,
+            is_active=True
+        ).all()
+        
+        project_data = []
+        for membership in project_memberships:
+            project = membership.project
+            members = project.get_members(session)
+            owner_membership = project.get_owner(session)
+            
+            # Get owner user object safely
+            owner_user = None
+            if owner_membership and owner_membership.user:
+                owner_user = owner_membership.user
+            
+            project_info = {
+                'project': project,
+                'owner': owner_membership,
+                'owner_user': owner_user,
+                'member_count': len(members),
+                'is_member': True,
+                'is_owner': membership.role == 'owner',
+                'role': membership.role
+            }
+            project_data.append(project_info)
+    
     default_project = get_default_project()
     
-    # Get artifact counts for each project
+    # Get artifact counts for each project the user can access
     project_artifacts = {}
-    for project in projects:
+    for item in project_data:
+        project = item['project']
         count = session.query(Artifact).filter(
             Artifact.project_id == project.id,
             Artifact.deleted == False
@@ -1095,9 +1253,11 @@ def projects():
         project_artifacts[project.id] = count
     
     return render_template('projects.html', 
-                         projects=projects, 
+                         project_data=project_data,
                          default_project=default_project,
-                         project_artifacts=project_artifacts)
+                         user_default_project=get_user_default_project(),
+                         project_artifacts=project_artifacts,
+                         is_admin=current_user.is_admin)
 
 @app.route('/projects/add', methods=['GET', 'POST'])
 @login_required
@@ -1121,8 +1281,18 @@ def add_project():
             flash('Project with this name already exists', 'error')
             return render_template('add_project.html')
         
-        project = Project(name=name, description=description)
+        # Create project with creator
+        project = Project(
+            name=name, 
+            description=description,
+            created_by=current_user.id
+        )
         session.add(project)
+        session.flush()  # Get the project ID
+        
+        # Add creator as owner
+        project.add_member(session, current_user.id, role='owner', added_by=current_user.id)
+        
         session.commit()
         
         flash(f'Project "{name}" created successfully!', 'success')
@@ -1136,18 +1306,36 @@ def add_project():
 @login_required
 @active_user_required
 def set_default_project(project_id):
-    """Set a project as default"""
+    """Set a project as the user's personal default project"""
     try:
         project = session.query(Project).get(project_id)
         if not project:
             flash('Project not found', 'error')
             return redirect(url_for('projects'))
         
-        # Set this project as default
-        project.set_as_default(session)
-        flash(f'"{project.name}" set as default project', 'success')
+        # Set this project as the user's personal default
+        if current_user.set_default_project(project_id, session):
+            session.commit()
+            flash(f'"{project.name}" set as your personal default project', 'success')
+        else:
+            flash('You do not have access to set this project as default', 'error')
     except Exception as e:
         flash(f'Error setting default project: {str(e)}', 'error')
+        session.rollback()
+    
+    return redirect(url_for('projects'))
+
+@app.route('/projects/clear_default', methods=['POST'])
+@login_required
+@active_user_required
+def clear_default_project():
+    """Clear the user's personal default project"""
+    try:
+        current_user.set_default_project(None, session)
+        session.commit()
+        flash('Personal default project cleared', 'info')
+    except Exception as e:
+        flash(f'Error clearing default project: {str(e)}', 'error')
         session.rollback()
     
     return redirect(url_for('projects'))
@@ -1307,6 +1495,147 @@ def move_artifacts(project_id):
     
     return redirect(url_for('projects'))
 
+# Project Member Management Routes
+@app.route('/projects/<int:project_id>/members')
+@login_required
+@active_user_required
+def project_members(project_id):
+    """Manage project members"""
+    project = session.query(Project).get(project_id)
+    if not project:
+        flash('Project not found.', 'error')
+        return redirect(url_for('projects'))
+    
+    # Check if user has access to this project
+    user_membership = session.query(ProjectMember).filter_by(
+        project_id=project_id,
+        user_id=current_user.id,
+        is_active=True
+    ).first()
+    
+    if not current_user.is_admin and not user_membership:
+        flash('You do not have access to this project.', 'error')
+        return redirect(url_for('projects'))
+    
+    # Get project members
+    members = project.get_members(session)
+    member_data = []
+    for member in members:
+        member_info = {
+            'membership': member,
+            'user': member.user,
+            'added_by': member.added_by_user,
+            'can_remove': (
+                current_user.is_admin or 
+                user_membership and user_membership.role == 'owner' or
+                member.user_id == current_user.id
+            )
+        }
+        member_data.append(member_info)
+    
+    # Get all users for adding new members (excluding current members)
+    current_member_ids = [m.user_id for m in members]
+    available_users = session.query(User).filter(
+        User.is_active == True,
+        ~User.id.in_(current_member_ids)
+    ).order_by(User.full_name).all()
+    
+    is_owner = user_membership and user_membership.role == 'owner'
+    
+    return render_template('project_members.html',
+                         project=project,
+                         member_data=member_data,
+                         available_users=available_users,
+                         is_owner=is_owner,
+                         is_admin=current_user.is_admin)
+
+@app.route('/projects/<int:project_id>/members/add', methods=['POST'])
+@login_required
+@active_user_required
+def add_project_member(project_id):
+    """Add a user to a project"""
+    project = session.query(Project).get(project_id)
+    if not project:
+        flash('Project not found.', 'error')
+        return redirect(url_for('projects'))
+    
+    # Check permissions - only owner, admin, or existing members can add
+    user_membership = session.query(ProjectMember).filter_by(
+        project_id=project_id,
+        user_id=current_user.id,
+        is_active=True
+    ).first()
+    
+    if not current_user.is_admin and not user_membership:
+        flash('You do not have permission to add members to this project.', 'error')
+        return redirect(url_for('project_members', project_id=project_id))
+    
+    user_id = request.form.get('user_id')
+    role = request.form.get('role', 'member')
+    
+    if not user_id:
+        flash('Please select a user to add.', 'error')
+        return redirect(url_for('project_members', project_id=project_id))
+    
+    # Validate role permissions
+    if role == 'owner' and not (current_user.is_admin or (user_membership and user_membership.role == 'owner')):
+        flash('You do not have permission to assign owner role.', 'error')
+        return redirect(url_for('project_members', project_id=project_id))
+    
+    try:
+        # Add the member
+        project.add_member(session, int(user_id), role=role, added_by=current_user.id)
+        session.commit()
+        
+        user = session.query(User).get(user_id)
+        flash(f'Successfully added {user.full_name} to the project!', 'success')
+        
+    except Exception as e:
+        session.rollback()
+        flash(f'Error adding member: {str(e)}', 'error')
+    
+    return redirect(url_for('project_members', project_id=project_id))
+
+@app.route('/projects/<int:project_id>/members/<int:user_id>/remove', methods=['POST'])
+@login_required
+@active_user_required
+def remove_project_member(project_id, user_id):
+    """Remove a user from a project"""
+    project = session.query(Project).get(project_id)
+    if not project:
+        flash('Project not found.', 'error')
+        return redirect(url_for('projects'))
+    
+    # Check permissions
+    user_membership = session.query(ProjectMember).filter_by(
+        project_id=project_id,
+        user_id=current_user.id,
+        is_active=True
+    ).first()
+    
+    if not current_user.is_admin and not (user_membership and user_membership.role == 'owner') and user_id != current_user.id:
+        flash('You do not have permission to remove this member.', 'error')
+        return redirect(url_for('project_members', project_id=project_id))
+    
+    try:
+        # Remove the member
+        project.remove_member(session, user_id)
+        session.commit()
+        
+        user = session.query(User).get(user_id)
+        if user_id == current_user.id:
+            flash('You have left the project.', 'info')
+            return redirect(url_for('projects'))
+        else:
+            flash(f'Successfully removed {user.full_name} from the project.', 'success')
+        
+    except Exception as e:
+        session.rollback()
+        flash(f'Error removing member: {str(e)}', 'error')
+    
+    return redirect(url_for('project_members', project_id=project_id))
+
 # All routes are defined above. The following runs the app if executed directly.
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=2222, debug=True)

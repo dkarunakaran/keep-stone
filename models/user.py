@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey
+from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
@@ -20,6 +21,12 @@ class User(UserMixin, Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_login = Column(DateTime)
     notes = Column(Text)
+    default_project_id = Column(Integer, ForeignKey('project.id'), nullable=True)
+    
+    # Relationships
+    project_memberships = relationship("ProjectMember", foreign_keys="ProjectMember.user_id", back_populates="user")
+    created_projects = relationship("Project", foreign_keys="Project.created_by", back_populates="creator")
+    default_project = relationship("Project", foreign_keys="[User.default_project_id]")
     
     def __init__(self, username, email, password, full_name, is_admin=False, is_active=True, notes=None):
         self.username = username
@@ -53,6 +60,45 @@ class User(UserMixin, Base):
     def is_anonymous(self):
         """Return False as this is not an anonymous user"""
         return False
+    
+    def set_default_project(self, project_id, session):
+        """Set the user's default project (only if they have access to it)"""
+        if project_id is None:
+            self.default_project_id = None
+            return True
+            
+        # Check if user has access to this project
+        from models.project_member import ProjectMember
+        membership = session.query(ProjectMember).filter_by(
+            user_id=self.id,
+            project_id=project_id,
+            is_active=True
+        ).first()
+        
+        if membership:
+            self.default_project_id = project_id
+            return True
+        return False
+    
+    def get_default_project(self, session):
+        """Get the user's default project if they still have access to it"""
+        if not self.default_project_id:
+            return None
+            
+        # Verify user still has access to their default project
+        from models.project_member import ProjectMember
+        membership = session.query(ProjectMember).filter_by(
+            user_id=self.id,
+            project_id=self.default_project_id,
+            is_active=True
+        ).first()
+        
+        if membership:
+            return self.default_project
+        else:
+            # User lost access, clear their default
+            self.default_project_id = None
+            return None
     
     def __repr__(self):
         return f'<User {self.username}>'

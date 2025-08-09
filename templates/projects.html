@@ -14,13 +14,15 @@
 
 <div class="card">
     <div class="card-body">
-        {% if projects %}
+        {% if project_data %}
         <div class="table-responsive">
             <table class="table table-hover">
                 <thead>
                     <tr>
                         <th>Name</th>
                         <th>Description</th>
+                        <th>Owner</th>
+                        <th>Members</th>
                         <th>Artifacts</th>
                         <th>Status</th>
                         <th>Created</th>
@@ -28,13 +30,28 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for project in projects %}
+                    {% for item in project_data %}
+                    {% set project = item.project %}
                     <tr>
                         <td>
                             <strong>{{ project.name }}</strong>
                             {% if project.is_default %}
                             <span class="badge bg-success ms-2">
-                                <i class="fas fa-star me-1"></i>Default
+                                <i class="fas fa-star me-1"></i>System Default
+                            </span>
+                            {% endif %}
+                            {% if user_default_project and user_default_project.id == project.id %}
+                            <span class="badge bg-primary ms-2">
+                                <i class="fas fa-heart me-1"></i>My Default
+                            </span>
+                            {% endif %}
+                            {% if item.is_owner %}
+                            <span class="badge bg-warning ms-1">
+                                <i class="fas fa-crown me-1"></i>Owner
+                            </span>
+                            {% elif item.is_member %}
+                            <span class="badge bg-info ms-1">
+                                <i class="fas fa-user me-1"></i>Member
                             </span>
                             {% endif %}
                         </td>
@@ -44,6 +61,18 @@
                             {% else %}
                             <span class="text-muted">No description</span>
                             {% endif %}
+                        </td>
+                        <td>
+                            {% if item.owner_user %}
+                            <span class="text-muted">{{ item.owner_user.full_name }}</span>
+                            {% else %}
+                            <span class="text-muted">No owner</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">
+                                <i class="fas fa-users me-1"></i>{{ item.member_count }} member{{ 's' if item.member_count != 1 else '' }}
+                            </span>
                         </td>
                         <td>
                             {% set artifact_count = project_artifacts[project.id] %}
@@ -65,19 +94,41 @@
                         </td>
                         <td class="text-end project-actions">
                             <div class="btn-group" role="group">
+                                <!-- Member management - visible to members and admins -->
+                                {% if item.is_member or is_admin %}
+                                <a href="{{ url_for('project_members', project_id=project.id) }}" 
+                                   class="btn btn-sm btn-outline-info" 
+                                   title="Manage Members">
+                                    <i class="fas fa-users"></i>
+                                </a>
+                                {% endif %}
+                                
+                                <!-- Edit project - visible to owners and admins -->
+                                {% if item.is_owner or is_admin %}
                                 <a href="{{ url_for('edit_project', project_id=project.id) }}" 
                                    class="btn btn-sm btn-outline-primary" 
                                    title="Edit Project">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                {% if not project.is_default %}
+                                {% endif %}
+                                
+                                <!-- Set as personal default - only for projects user is member of -->
+                                {% if user_default_project and user_default_project.id == project.id %}
+                                <form method="POST" action="{{ url_for('clear_default_project') }}" style="display: inline;">
+                                    <button type="submit" class="btn btn-sm btn-outline-warning" title="Clear as My Default">
+                                        <i class="fas fa-star-half-alt"></i>
+                                    </button>
+                                </form>
+                                {% elif item.is_member %}
                                 <form method="POST" action="{{ url_for('set_default_project', project_id=project.id) }}" style="display: inline;">
-                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Set as Default">
+                                    <button type="submit" class="btn btn-sm btn-outline-primary" title="Set as My Default">
                                         <i class="fas fa-star"></i>
                                     </button>
                                 </form>
                                 {% endif %}
-                                {% if projects|length > 1 %}
+                                
+                                <!-- Delete project - only owners and admins -->
+                                {% if (item.is_owner or is_admin) and project_data|length > 1 %}
                                 <button type="button" 
                                         class="btn btn-sm btn-outline-danger" 
                                         data-bs-toggle="modal" 
@@ -97,15 +148,20 @@
         <div class="text-center py-5">
             <i class="fas fa-folder-open fa-3x text-muted mb-3"></i>
             <h5 class="text-muted">No projects found</h5>
-            <p class="text-muted">Create your first project to get started.</p>
+            {% if is_admin %}
+            <p class="text-muted">No projects exist in the system yet.</p>
+            {% else %}
+            <p class="text-muted">You are not a member of any projects yet. Ask an admin to add you to a project.</p>
+            {% endif %}
         </div>
         {% endif %}
     </div>
 </div>
 
 <!-- Delete Project Modals -->
-{% for project in projects %}
-{% if projects|length > 1 %}
+{% for item in project_data %}
+{% set project = item.project %}
+{% if (item.is_owner or is_admin) and project_data|length > 1 %}
 <div class="modal fade" id="deleteProjectModal{{ project.id }}" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -134,7 +190,8 @@
                         <label for="moveProjectSelect{{ project.id }}" class="form-label">Move artifacts to:</label>
                         <select class="form-select" id="moveProjectSelect{{ project.id }}">
                             <option value="">Select a project...</option>
-                            {% for other_project in projects %}
+                            {% for other_item in project_data %}
+                            {% set other_project = other_item.project %}
                             {% if other_project.id != project.id %}
                             <option value="{{ other_project.id }}">{{ other_project.name }}</option>
                             {% endif %}
@@ -224,287 +281,5 @@ function moveArtifacts(projectId, projectName) {
         form.submit();
     }
 }
-</script>
-
-<script>
-function moveArtifacts(projectId, projectName) {
-    const selectElement = document.getElementById('moveProjectSelect' + projectId);
-    const targetProjectId = selectElement.value;
-    
-    if (!targetProjectId) {
-        alert('Please select a target project');
-        return;
-    }
-    
-    const targetProjectName = selectElement.options[selectElement.selectedIndex].text;
-    
-    if (confirm(`Move all artifacts from "${projectName}" to "${targetProjectName}"?`)) {
-        // Create and submit form
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = `/projects/${projectId}/move_artifacts`;
-        
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'target_project_id';
-        input.value = targetProjectId;
-        
-        form.appendChild(input);
-        document.body.appendChild(form);
-        form.submit();
-    }
-}
-
-// Fix for Bootstrap modal form field issues
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM loaded, setting up modal handlers');
-    
-    // Function to enable form fields
-    function enableFormFields(modal) {
-        console.log('Enabling form fields in modal:', modal.id);
-        
-        // Find all form elements in this modal and ensure they're enabled
-        const formElements = modal.querySelectorAll('input, textarea, select');
-        formElements.forEach(function(element) {
-            element.disabled = false;
-            element.readOnly = false;
-            element.style.pointerEvents = 'auto';
-            element.style.userSelect = 'text';
-            element.style.webkitUserSelect = 'text';
-            element.style.mozUserSelect = 'text';
-            element.style.msUserSelect = 'text';
-            element.style.backgroundColor = '#ffffff';
-            element.style.cursor = 'text';
-            
-            // Remove any readonly or disabled attributes
-            element.removeAttribute('readonly');
-            element.removeAttribute('disabled');
-            
-            console.log('Enabled element:', element.id, element.tagName, element.type);
-        });
-        
-        // Specifically target edit project inputs
-        const editInputs = modal.querySelectorAll('.edit-project-name, .edit-project-description');
-        editInputs.forEach(function(input) {
-            input.style.backgroundColor = '#ffffff';
-            input.style.border = '1px solid #dee2e6';
-            input.style.color = '#495057';
-            input.style.cursor = 'text';
-            input.style.pointerEvents = 'auto';
-            input.disabled = false;
-            input.readOnly = false;
-            console.log('Specifically enabled edit input:', input.id);
-        });
-        
-        // Ensure footer buttons are visible and clickable
-        const footer = modal.querySelector('.modal-footer');
-        if (footer) {
-            footer.style.display = 'flex';
-            footer.style.justifyContent = 'flex-end';
-            footer.style.gap = '0.5rem';
-            footer.style.flexShrink = '0';
-            footer.style.marginTop = 'auto';
-            footer.style.position = 'relative';
-            footer.style.zIndex = '1050';
-            console.log('Modal footer made visible');
-        }
-        
-        // Ensure modal content is properly sized
-        const modalContent = modal.querySelector('.modal-content');
-        if (modalContent) {
-            modalContent.style.display = 'flex';
-            modalContent.style.flexDirection = 'column';
-            modalContent.style.maxHeight = 'calc(100vh - 4rem)';
-            modalContent.style.overflow = 'hidden';
-        }
-        
-        // Ensure modal body doesn't overflow
-        const modalBody = modal.querySelector('.modal-body');
-        if (modalBody) {
-            modalBody.style.flex = '1';
-            modalBody.style.overflowY = 'auto';
-            modalBody.style.maxHeight = 'calc(100vh - 12rem)';
-        }
-        
-        // Ensure close buttons work
-        const closeButtons = modal.querySelectorAll('[data-bs-dismiss="modal"]');
-        closeButtons.forEach(function(btn) {
-            btn.style.pointerEvents = 'auto';
-            btn.style.cursor = 'pointer';
-            console.log('Close button enabled:', btn.className);
-        });
-    }
-    
-    // Initialize Bootstrap modals explicitly
-    const editModals = document.querySelectorAll('[id^="editProjectModal"]');
-    console.log('Found edit modals:', editModals.length);
-    
-    editModals.forEach(function(modalElement) {
-        // Create Bootstrap modal instance
-        const modal = new bootstrap.Modal(modalElement, {
-            backdrop: true,
-            keyboard: true,
-            focus: true
-        });
-        
-        // Store modal instance for later use
-        modalElement._bsModal = modal;
-        
-        // Try multiple events to ensure fields are enabled
-        modalElement.addEventListener('show.bs.modal', function() {
-            console.log('Edit modal showing:', modalElement.id);
-            enableFormFields(modalElement);
-        });
-        
-        modalElement.addEventListener('shown.bs.modal', function() {
-            console.log('Edit modal shown:', modalElement.id);
-            enableFormFields(modalElement);
-            
-            // Force proper modal sizing
-            const modalDialog = modalElement.querySelector('.modal-dialog');
-            const modalContent = modalElement.querySelector('.modal-content');
-            const modalFooter = modalElement.querySelector('.modal-footer');
-            
-            if (modalDialog) {
-                modalDialog.style.height = 'auto';
-                modalDialog.style.minHeight = '300px';
-                modalDialog.style.maxHeight = 'calc(100vh - 2rem)';
-                modalDialog.style.display = 'flex';
-                modalDialog.style.alignItems = 'center';
-            }
-            
-            if (modalContent) {
-                modalContent.style.height = 'auto';
-                modalContent.style.minHeight = '300px';
-                modalContent.style.display = 'flex';
-                modalContent.style.flexDirection = 'column';
-            }
-            
-            if (modalFooter) {
-                modalFooter.style.display = 'flex';
-                modalFooter.style.justifyContent = 'flex-end';
-                modalFooter.style.flexShrink = '0';
-                modalFooter.style.marginTop = 'auto';
-                modalFooter.style.visibility = 'visible';
-                modalFooter.style.opacity = '1';
-                modalFooter.style.position = 'relative';
-                modalFooter.style.bottom = '0';
-                console.log('Modal footer positioned:', modalFooter.style.display);
-            }
-            
-            // Focus on the first input field
-            const firstInput = modalElement.querySelector('input[type="text"]');
-            if (firstInput) {
-                setTimeout(() => {
-                    firstInput.focus();
-                    firstInput.select();
-                    console.log('Focused on:', firstInput.id);
-                }, 200);
-            }
-        });
-        
-        // Handle form submission
-        const form = modalElement.querySelector('form');
-        if (form) {
-            form.addEventListener('submit', function(e) {
-                console.log('Form submitted for modal:', modalElement.id);
-                console.log('Form action:', form.action);
-                console.log('Form method:', form.method);
-                
-                // Get form data
-                const formData = new FormData(form);
-                console.log('Form data:', Array.from(formData.entries()));
-                
-                // Let the form submit naturally
-                return true;
-            });
-        }
-    });
-    
-    // Also fix add project modal
-    const addModal = document.getElementById('addProjectModal');
-    if (addModal) {
-        const modal = new bootstrap.Modal(addModal, {
-            backdrop: true,
-            keyboard: true,
-            focus: true
-        });
-        
-        addModal.addEventListener('shown.bs.modal', function() {
-            const firstInput = addModal.querySelector('input[type="text"]');
-            if (firstInput) {
-                setTimeout(() => {
-                    firstInput.focus();
-                }, 150);
-            }
-        });
-    }
-    
-    // Ensure all modals have proper minimum height
-    const allModals = document.querySelectorAll('.modal');
-    allModals.forEach(function(modal) {
-        const modalDialog = modal.querySelector('.modal-dialog');
-        const modalContent = modal.querySelector('.modal-content');
-        
-        if (modalDialog) {
-            modalDialog.style.minHeight = '500px';
-        }
-        
-        if (modalContent) {
-            modalContent.style.minHeight = '450px';
-        }
-    });
-    
-    // Add click handlers to edit buttons
-    const editButtons = document.querySelectorAll('[data-bs-target^="#editProjectModal"]');
-    console.log('Found edit buttons:', editButtons.length);
-    
-    editButtons.forEach(function(button) {
-        button.addEventListener('click', function(e) {
-            const targetModalId = this.getAttribute('data-bs-target');
-            console.log('Edit button clicked for modal:', targetModalId);
-            
-            // Find the modal and show it
-            const modalElement = document.querySelector(targetModalId);
-            if (modalElement && modalElement._bsModal) {
-                console.log('Showing modal programmatically');
-                modalElement._bsModal.show();
-            }
-            
-            // Immediately try to enable fields
-            setTimeout(() => {
-                const modal = document.querySelector(targetModalId);
-                if (modal) {
-                    enableFormFields(modal);
-                }
-            }, 50);
-        });
-    });
-    
-    // Handle close button clicks manually if needed
-    document.addEventListener('click', function(e) {
-        if (e.target.matches('[data-bs-dismiss="modal"]') || e.target.closest('[data-bs-dismiss="modal"]')) {
-            const modal = e.target.closest('.modal');
-            if (modal && modal._bsModal) {
-                console.log('Closing modal:', modal.id);
-                modal._bsModal.hide();
-            }
-        }
-    });
-    
-    // Handle update button clicks specifically
-    document.addEventListener('click', function(e) {
-        if (e.target.matches('button[type="submit"]') && e.target.closest('.modal')) {
-            console.log('Update button clicked:', e.target);
-            const form = e.target.closest('form');
-            if (form) {
-                console.log('Form found, submitting:', form.id);
-                // Ensure the form is not prevented from submitting
-                e.stopPropagation();
-                return true;
-            }
-        }
-    });
-});
 </script>
 {% endblock %}
