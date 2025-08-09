@@ -1,0 +1,356 @@
+{% extends "base.html" %}
+
+{% block title %}Project Members - {{ project.name }} - KeepStone{% endblock %}
+
+{% block head %}
+{{ super() }}
+<style>
+    .project-members-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    
+    .project-header {
+        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        color: white;
+        border-radius: 0.75rem;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        text-align: center;
+    }
+    
+    .project-header h2 {
+        margin-bottom: 0.5rem;
+    }
+    
+    .project-header .project-description {
+        opacity: 0.9;
+        font-size: 1.1rem;
+    }
+    
+    .members-section {
+        background: white;
+        border-radius: 0.75rem;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .section-title {
+        color: #1f2937;
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .member-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        background: #f9fafb;
+        display: flex;
+        justify-content: between;
+        align-items: center;
+    }
+    
+    .member-info {
+        flex: 1;
+    }
+    
+    .member-name {
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 0.25rem;
+    }
+    
+    .member-details {
+        font-size: 0.875rem;
+        color: #6b7280;
+    }
+    
+    .member-role {
+        margin-right: 1rem;
+    }
+    
+    .role-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.375rem;
+        font-weight: 500;
+    }
+    
+    .role-owner {
+        background: #fef3c7;
+        color: #92400e;
+    }
+    
+    .role-member {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+    
+    .add-member-form {
+        background: #f0f9ff;
+        border: 1px solid #bae6fd;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        border: none;
+        border-radius: 0.5rem;
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.5);
+    }
+    
+    .btn-danger {
+        background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+        border: none;
+        border-radius: 0.375rem;
+        padding: 0.375rem 0.75rem;
+        font-weight: 500;
+        font-size: 0.875rem;
+        transition: all 0.2s ease;
+    }
+    
+    .btn-danger:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.5);
+    }
+    
+    .btn-secondary {
+        background: #6b7280;
+        border: none;
+        border-radius: 0.5rem;
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+    
+    .btn-secondary:hover {
+        background: #4b5563;
+        transform: translateY(-1px);
+    }
+    
+    .form-control, .form-select {
+        border-radius: 0.5rem;
+        border: 1px solid #d1d5db;
+        padding: 0.75rem;
+        transition: all 0.2s ease;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: #6366f1;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+    
+    .stats-row {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+        background: white;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        text-align: center;
+        border: 1px solid #e5e7eb;
+        flex: 1;
+    }
+    
+    .stat-number {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #6366f1;
+    }
+    
+    .stat-label {
+        font-size: 0.875rem;
+        color: #6b7280;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: #6b7280;
+    }
+    
+    .member-actions {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="project-members-container">
+    <!-- Project Header -->
+    <div class="project-header">
+        <h2>{{ project.name }}</h2>
+        {% if project.description %}
+        <p class="project-description">{{ project.description }}</p>
+        {% endif %}
+        <div class="mt-3">
+            <span class="badge bg-light text-dark">
+                <i class="fas fa-users me-1"></i>{{ member_data|length }} Members
+            </span>
+        </div>
+    </div>
+    
+    <!-- Navigation -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="mb-0">
+            <i class="fas fa-users me-2"></i>Project Members
+        </h3>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('projects') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back to Projects
+            </a>
+        </div>
+    </div>
+    
+    <!-- Statistics -->
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-number">{{ member_data|length }}</div>
+            <div class="stat-label">Total Members</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ member_data|selectattr('membership.role', 'equalto', 'owner')|list|length }}</div>
+            <div class="stat-label">Owners</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ member_data|selectattr('membership.role', 'equalto', 'member')|list|length }}</div>
+            <div class="stat-label">Members</div>
+        </div>
+    </div>
+    
+    <!-- Add New Member Form (for owners and admins) -->
+    {% if (is_owner or is_admin) and available_users %}
+    <div class="members-section">
+        <h4 class="section-title">
+            <i class="fas fa-user-plus text-success"></i>
+            Add New Member
+        </h4>
+        
+        <div class="add-member-form">
+            <form method="POST" action="{{ url_for('add_project_member', project_id=project.id) }}" class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Select User</label>
+                    <select name="user_id" class="form-select" required>
+                        <option value="">Choose a user...</option>
+                        {% for user in available_users %}
+                        <option value="{{ user.id }}">{{ user.full_name }} (@{{ user.username }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Role</label>
+                    <select name="role" class="form-select">
+                        <option value="member">Member</option>
+                        {% if is_owner or is_admin %}
+                        <option value="owner">Owner</option>
+                        {% endif %}
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-plus me-2"></i>Add Member
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Members List -->
+    <div class="members-section">
+        <h4 class="section-title">
+            <i class="fas fa-users text-info"></i>
+            Current Members ({{ member_data|length }})
+        </h4>
+        
+        {% if member_data %}
+        <div class="members-list">
+            {% for item in member_data %}
+            <div class="member-card">
+                <div class="member-info">
+                    <div class="member-name">{{ item.user.full_name }}</div>
+                    <div class="member-details">
+                        <i class="fas fa-user me-1"></i>@{{ item.user.username }}
+                        <span class="ms-2">
+                            <i class="fas fa-envelope me-1"></i>{{ item.user.email }}
+                        </span>
+                        {% if item.added_by %}
+                        <span class="ms-2">
+                            <i class="fas fa-plus me-1"></i>Added by {{ item.added_by.full_name }}
+                        </span>
+                        {% endif %}
+                        <span class="ms-2">
+                            <i class="fas fa-calendar me-1"></i>{{ item.membership.added_at.strftime('%B %d, %Y') }}
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="member-actions">
+                    <div class="member-role">
+                        <span class="role-badge role-{{ item.membership.role }}">
+                            {% if item.membership.role == 'owner' %}
+                            <i class="fas fa-crown me-1"></i>Owner
+                            {% else %}
+                            <i class="fas fa-user me-1"></i>Member
+                            {% endif %}
+                        </span>
+                    </div>
+                    
+                    {% if item.can_remove %}
+                    <form method="POST" action="{{ url_for('remove_project_member', project_id=project.id, user_id=item.user.id) }}" 
+                          style="display: inline;" 
+                          onsubmit="return confirm('Are you sure you want to remove {{ item.user.full_name }} from this project?')">
+                        <button type="submit" class="btn btn-danger">
+                            {% if item.user.id == current_user.id %}
+                            <i class="fas fa-sign-out-alt me-1"></i>Leave Project
+                            {% else %}
+                            <i class="fas fa-user-minus me-1"></i>Remove
+                            {% endif %}
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-users fa-3x mb-3"></i>
+            <h5>No Members Found</h5>
+            <p>This project doesn't have any members yet.</p>
+        </div>
+        {% endif %}
+    </div>
+    
+    {% if not available_users and (is_owner or is_admin) %}
+    <div class="members-section">
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>All users have been added to this project.</strong>
+            No additional users are available to add.
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
