@@ -82,11 +82,11 @@ initialize_config()
 utility.create_database(config=config)
 
 # Run database migration to add new columns
-try:
-    utility.migrate_database()
-    utility.migrate_user_default_projects()
-except Exception as e:
-    print(f"Warning: Migration failed: {e}")
+# try:
+#     utility.migrate_database()
+#     utility.migrate_user_default_projects()
+# except Exception as e:
+#     print(f"Warning: Migration failed: {e}")
 
 Session = sessionmaker(bind=models.base.engine)
 session = Session()

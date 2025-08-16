@@ -498,7 +498,6 @@
                                 {% endif %}
                             </div>
                         </li>
-                        <li><hr class="dropdown-divider"></li>
                         {% if current_user.is_admin %}
                         <li>
                             <a class="dropdown-item" href="{{ url_for('user_management') }}">
@@ -507,15 +506,17 @@
                         </li>
                         {% endif %}
                         <li>
-                            <a class="dropdown-item" href="{{ url_for('settings') }}">
-                                <i class="fas fa-cog me-2"></i>Settings
-                            </a>
-                        </li>
-                        <li>
                             <a class="dropdown-item" href="{{ url_for('projects') }}">
-                                <i class="fas fa-folder me-2"></i>Projects
+                                <i class="fas fa-folder me-2"></i>Projects Management
                             </a>
                         </li>
+                        {% if current_user.is_admin %}
+                        <li>
+                            <a class="dropdown-item" href="{{ url_for('settings') }}">
+                                <i class="fas fa-cog me-2"></i>System Wide Settings
+                            </a>
+                        </li>
+                        {% endif %}
                         <li><hr class="dropdown-divider"></li>
                         <li>
                             <a class="dropdown-item text-danger" href="{{ url_for('logout') }}">
