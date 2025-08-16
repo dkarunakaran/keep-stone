@@ -72,7 +72,15 @@
                     </option>
                     {% endfor %}
                 </select>
+                <small class="text-muted mt-1 d-block">
+                    <i class="fas fa-info-circle me-1"></i>Only projects you have access to are shown
+                </small>
             </div>
+        </div>
+
+        <div class="alert alert-info mb-3" id="token-project-info" style="display: none;">
+            <i class="fas fa-key me-2"></i>
+            <strong>Token Project Scope:</strong> This token will only be accessible to members of the selected project.
         </div>
 
         <textarea id="content" name="content"></textarea>
@@ -134,6 +142,25 @@
             'table'
         ]
     });
+
+    // Handle artifact type change to show token project info
+    const artifactTypeSelect = document.getElementById('artifact_type');
+    const tokenProjectInfo = document.getElementById('token-project-info');
+    
+    function toggleTokenInfo() {
+        const selectedType = artifactTypeSelect.options[artifactTypeSelect.selectedIndex];
+        if (selectedType && selectedType.text === 'Token') {
+            tokenProjectInfo.style.display = 'block';
+        } else {
+            tokenProjectInfo.style.display = 'none';
+        }
+    }
+    
+    // Check initial state
+    toggleTokenInfo();
+    
+    // Listen for changes
+    artifactTypeSelect.addEventListener('change', toggleTokenInfo);
 
     // Initialize file handling variables
     const dropzone = document.getElementById('dropzone');

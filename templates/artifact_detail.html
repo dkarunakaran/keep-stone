@@ -286,6 +286,23 @@
                 Active
             {% endif %}
         </span>
+        
+        {% if project %}
+        <span class="ms-3 text-muted">|</span>
+        <span class="status-badge bg-info text-white ms-3">
+            <i class="fas fa-project-diagram"></i>
+            {{ project.name }}
+        </span>
+        {% endif %}
+        
+        {% if type_name.lower() == 'token' %}
+        <span class="ms-3 text-muted">|</span>
+        <span class="status-badge bg-warning text-dark ms-3">
+            <i class="fas fa-shield-alt"></i>
+            Project-Scoped
+        </span>
+        {% endif %}
+        
         <span class="ms-3 text-muted">|</span>
         <span class="type-badge ms-3">
             {{ type_name }}
@@ -316,7 +333,30 @@
     </div>
     {% endif %}
 
-    <div class="markdown-content">
+    {% if type_name.lower() == 'token' and project %}
+    <div class="alert alert-info border-0 shadow-sm mb-4">
+        <div class="d-flex align-items-start">
+            <div class="flex-shrink-0">
+                <i class="fas fa-info-circle fa-lg text-info"></i>
+            </div>
+            <div class="flex-grow-1 ms-3">
+                <h6 class="alert-heading mb-2">
+                    <i class="fas fa-shield-alt me-2"></i>Project Access Control
+                </h6>
+                <p class="mb-2">
+                    This token is scoped to the <strong>{{ project.name }}</strong> project. 
+                    Only members of this project can access and use this token.
+                </p>
+                <small class="text-muted">
+                    <i class="fas fa-users me-1"></i>
+                    Project members have access to this token
+                </small>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="markdown-content">>
         {{ artifact.content | markdown | safe }}
     </div>
 

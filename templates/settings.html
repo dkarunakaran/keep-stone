@@ -1,289 +1,699 @@
 {% extends "base.html" %}
 
-{% block title %}Settings - KeepStone{% endblock %}
-
-{% block head %}
-{{ super() }}
-<style>
-    .settings-container {
-        max-width: 800px;
-        margin: 0 auto;
-    }
-    
-    .config-section {
-        background: white;
-        border-radius: 0.75rem;
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-    
-    .config-group {
-        border-bottom: 1px solid #e5e7eb;
-        padding-bottom: 1rem;
-        margin-bottom: 1rem;
-    }
-    
-    .config-group:last-child {
-        border-bottom: none;
-        margin-bottom: 0;
-        padding-bottom: 0;
-    }
-    
-    .config-label {
-        font-weight: 600;
-        color: #374151;
-        margin-bottom: 0.25rem;
-    }
-    
-    .config-description {
-        font-size: 0.875rem;
-        color: #6b7280;
-        margin-bottom: 0.5rem;
-    }
-    
-    .config-input {
-        width: 100%;
-        padding: 0.5rem 0.75rem;
-        border: 1px solid #d1d5db;
-        border-radius: 0.375rem;
-        font-size: 0.875rem;
-    }
-    
-    .config-input:focus {
-        outline: none;
-        border-color: #6366f1;
-        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-    }
-    
-    .config-input:disabled {
-        background-color: #f9fafb;
-        color: #6b7280;
-        border-color: #d1d5db;
-        cursor: not-allowed;
-        opacity: 0.7;
-    }
-    
-    .config-input:disabled:focus {
-        box-shadow: none;
-        border-color: #d1d5db;
-    }
-    
-    .config-group.disabled {
-        opacity: 0.8;
-    }
-    
-    .config-group.disabled .config-label::after {
-        content: " (System Setting)";
-        font-size: 0.75rem;
-        color: #9ca3af;
-        font-weight: normal;
-        font-style: italic;
-    }
-    
-    .section-title {
-        color: #1f2937;
-        font-size: 1.25rem;
-        font-weight: 600;
-        margin-bottom: 1rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    
-    .btn-save {
-        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-        border: none;
-        color: white;
-        padding: 0.75rem 2rem;
-        border-radius: 0.5rem;
-        font-weight: 500;
-        transition: all 0.2s ease;
-    }
-    
-    .btn-save:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.5);
-    }
-
-    .btn-reset {
-        background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-        border: none;
-        color: white;
-        padding: 0.75rem 2rem;
-        border-radius: 0.5rem;
-        font-weight: 500;
-        transition: all 0.2s ease;
-    }
-    
-    .btn-reset:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.5);
-    }
-
-    .empty-state {
-        text-align: center;
-        padding: 3rem;
-        color: #6b7280;
-    }
-
-    .action-buttons {
-        display: flex;
-        gap: 1rem;
-        justify-content: center;
-        align-items: center;
-    }
-</style>
-{% endblock %}
+{% block title %}System Wide Settings - KeepStone{% endblock %}
 
 {% block content %}
-<div class="settings-container">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="mb-0">
-            <i class="fas fa-gear me-2"></i>Settings
-        </h2>
-        <div class="d-flex gap-2">
-            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+<div class="container-fluid px-0">
+    <!-- Header Section -->
+    <div class="settings-header mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2 class="settings-title mb-2">
+                    <i class="fas fa-cog me-3 text-primary"></i>System Wide Settings
+                </h2>
+                <p class="settings-subtitle mb-0">Configure global application settings</p>
+            </div>
+            <a href="{{ url_for('index') }}" class="btn btn-outline-light">
                 <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
             </a>
         </div>
     </div>
-    
+
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb bg-transparent p-0">
+            <li class="breadcrumb-item">
+                <a href="{{ url_for('index') }}" class="text-decoration-none breadcrumb-link">
+                    <i class="fas fa-home me-1"></i>Dashboard
+                </a>
+            </li>
+            <li class="breadcrumb-item active text-muted">System Wide Settings</li>
+        </ol>
+    </nav>
+
     {% if config_items %}
-    <form method="POST" id="settingsForm">
-        {% for section, items in config_items.items() %}
-        <div class="config-section">
-            <h3 class="section-title">
-                <i class="{{ get_section_icon(section) }} text-primary"></i>
-                {{ get_section_title(section) }}
-            </h3>
+    <form method="POST" id="settings-form">
+        <div class="settings-container">
+            {% set config_list = [] %}
+            {% for section_name, configs in config_items.items() %}
+                {% for config in configs %}
+                    {% set _ = config_list.append(config) %}
+                {% endfor %}
+            {% endfor %}
             
-            {% for item in items %}
-            <div class="config-group{% if not item.editable %} disabled{% endif %}">
-                <label class="config-label">{{ item.title }}</label>
-                <div class="config-description">{{ item.description }}</div>
+            {% for config in config_list %}
+            <div class="setting-card">
+                <div class="setting-header">
+                    <label for="{{ config.key }}" class="setting-label">
+                        {{ config.title }}
+                        {% if not config.editable %}
+                        <span class="setting-badge">
+                            <i class="fas fa-lock me-1"></i>Read Only
+                        </span>
+                        {% endif %}
+                    </label>
+                    {% if config.description %}
+                    <div class="setting-description">
+                        <i class="fas fa-info-circle me-1"></i>{{ config.description }}
+                    </div>
+                    {% endif %}
+                </div>
                 
-                {% if item.input_type == 'number' %}
-                    <input type="number" 
-                           name="{{ item.key }}" 
-                           value="{{ item.display_value }}" 
-                           class="config-input"
-                           min="1"
-                           {% if not item.editable %}disabled{% endif %}>
-                {% elif item.input_type == 'boolean' %}
-                    <select name="{{ item.key }}" class="config-input"{% if not item.editable %} disabled{% endif %}>
-                        <option value="true" {% if item.display_value.lower() == 'true' %}selected{% endif %}>True</option>
-                        <option value="false" {% if item.display_value.lower() == 'false' %}selected{% endif %}>False</option>
-                    </select>
-                {% elif item.input_type == 'select' %}
-                    <select name="{{ item.key }}" class="config-input"{% if not item.editable %} disabled{% endif %}>
-                        {% for option in item.options %}
-                        <option value="{{ option }}" {% if item.display_value == option %}selected{% endif %}>{{ option }}</option>
-                        {% endfor %}
-                    </select>
-                {% else %}
-                    <input type="text" 
-                           name="{{ item.key }}" 
-                           value="{{ item.display_value }}" 
-                           class="config-input"
-                           {% if item.key == 'type' %}placeholder="Token, Troubleshoot, Information, Other"{% endif %}
-                           {% if not item.editable %}disabled{% endif %}>
-                {% endif %}
+                <div class="setting-input-container">
+                        {% if config.input_type == 'select' %}
+                        <select class="form-select setting-input" id="{{ config.key }}" name="{{ config.key }}" {% if not config.editable %}disabled{% endif %}>
+                            {% for option in config.options %}
+                            <option value="{{ option }}" {% if config.display_value == option %}selected{% endif %}>
+                                {{ option }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        {% elif config.input_type == 'boolean' %}
+                        <div class="setting-toggle">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input toggle-input" type="checkbox" id="{{ config.key }}" name="{{ config.key }}" 
+                                       value="true" {% if config.display_value == 'True' %}checked{% endif %} {% if not config.editable %}disabled{% endif %}>
+                                <label class="form-check-label toggle-label" for="{{ config.key }}">
+                                    {% if config.display_value == 'True' %}Enabled{% else %}Disabled{% endif %}
+                                </label>
+                            </div>
+                        </div>
+                        {% elif config.input_type == 'number' %}
+                        <input type="number" class="form-control setting-input" id="{{ config.key }}" name="{{ config.key }}" 
+                               value="{{ config.display_value }}" {% if not config.editable %}readonly{% endif %}>
+                        {% else %}
+                        <input type="text" class="form-control setting-input" id="{{ config.key }}" name="{{ config.key }}" 
+                               value="{{ config.display_value }}" {% if not config.editable %}readonly{% endif %}>
+                        {% endif %}
+                    </div>
             </div>
             {% endfor %}
         </div>
-        {% endfor %}
         
-        <div class="action-buttons mt-4">
-            <button type="submit" class="btn btn-save">
-                <i class="fas fa-save me-2"></i>Save Settings
-            </button>
-            <button type="button" class="btn btn-reset" onclick="resetToDefaults()">
-                <i class="fas fa-undo me-2"></i>Reset to Defaults
-            </button>
+        <!-- Action Bar -->
+        <div class="action-bar">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="action-buttons">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-save me-2"></i>Save System Settings
+                    </button>
+                    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-lg ms-3">
+                        <i class="fas fa-times me-2"></i>Cancel
+                    </a>
+                </div>
+                
+                <div class="action-info">
+                    <div class="info-badge">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Changes will affect <strong>all users and projects</strong>
+                    </div>
+                </div>
+            </div>
         </div>
     </form>
     {% else %}
-    <div class="config-section">
-        <div class="empty-state">
-            <i class="fas fa-cog fa-3x mb-3"></i>
-            <h4>No Editable Settings</h4>
-            <p>No configuration items are marked as editable in the current setup.</p>
+    <div class="empty-state">
+        <div class="empty-state-content">
+            <div class="empty-state-icon">
+                <i class="fas fa-cog"></i>
+            </div>
+            <h3 class="empty-state-title">No System Settings Available</h3>
+            <p class="empty-state-text">No configurable system settings are currently available.</p>
+            <a href="{{ url_for('index') }}" class="btn btn-primary">
+                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+            </a>
         </div>
     </div>
     {% endif %}
 </div>
 
 <style>
-    .user-management-section {
-        border: 1px solid #e5e7eb;
-        border-radius: 0.5rem;
+/* Header Styling */
+.settings-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 2rem;
+    border-radius: 1rem;
+    color: white;
+    box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
+}
+
+.settings-title {
+    font-weight: 700;
+    font-size: 2rem;
+    margin: 0;
+}
+
+.settings-subtitle {
+    font-size: 1.1rem;
+    opacity: 0.9;
+}
+
+/* Breadcrumb */
+.breadcrumb-link {
+    color: #6b7280;
+    transition: color 0.2s ease;
+}
+
+.breadcrumb-link:hover {
+    color: var(--primary-color);
+}
+
+/* Settings Container */
+.settings-container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+/* Sequential Setting Cards */
+.setting-card {
+    background: white;
+    border-radius: 1rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    border: 1px solid #f1f5f9;
+    margin-bottom: 1.5rem;
+    padding: 1.5rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.setting-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+.setting-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.setting-header {
+    margin-bottom: 1rem;
+}
+
+.setting-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 0.5rem;
+    font-size: 1.1rem;
+    line-height: 1.4;
+}
+
+.setting-badge {
+    background: #fef3c7;
+    color: #92400e;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    white-space: nowrap;
+    margin-left: 1rem;
+}
+
+.setting-description {
+    color: #6b7280;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-top: 0.25rem;
+}
+
+/* Setting Input Container */
+.setting-input-container {
+    width: 100%;
+}
+
+.setting-input {
+    border: 2px solid #e5e7eb;
+    border-radius: 0.75rem;
+    padding: 0.875rem 1.25rem;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    background: #fafafa;
+    width: 100%;
+}
+
+.setting-input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+    outline: none;
+    background: white;
+}
+
+.setting-input:disabled,
+.setting-input[readonly] {
+    background: #f9fafb;
+    color: #6b7280;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* Toggle Styling */
+.setting-toggle {
+    padding: 0.5rem 0;
+}
+
+.toggle-input {
+    width: 3.5rem;
+    height: 1.75rem;
+    background-color: #e5e7eb;
+    border: none;
+    border-radius: 2rem;
+    cursor: pointer;
+}
+
+.toggle-input:checked {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.toggle-input:focus {
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+}
+
+.toggle-label {
+    margin-left: 1rem;
+    font-weight: 500;
+    color: #374151;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.setting-toggle.enabled .toggle-label {
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+/* Action Bar */
+.action-bar {
+    background: white;
+    padding: 1.5rem 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    border: 1px solid #f1f5f9;
+    margin-top: 2rem;
+    position: sticky;
+    bottom: 2rem;
+    z-index: 10;
+}
+
+.action-buttons .btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.btn-outline-secondary {
+    border: 2px solid #e5e7eb;
+    color: #6b7280;
+}
+
+.btn-outline-secondary:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+    color: #374151;
+}
+
+.info-badge {
+    background: linear-gradient(135deg, #eff6ff 0%, #e0f2fe 100%);
+    color: #1e40af;
+    padding: 0.75rem 1.25rem;
+    border-radius: 0.75rem;
+    font-size: 0.9rem;
+    border: 1px solid #bfdbfe;
+}
+
+/* Empty State */
+.empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+}
+
+.empty-state-content {
+    text-align: center;
+    max-width: 400px;
+}
+
+.empty-state-icon {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    color: #9ca3af;
+    font-size: 2rem;
+}
+
+.empty-state-title {
+    color: #374151;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.empty-state-text {
+    color: #6b7280;
+    margin-bottom: 2rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .settings-header {
+        padding: 1.5rem;
+        text-align: center;
+    }
+    
+    .settings-title {
+        font-size: 1.5rem;
+    }
+    
+    .settings-container {
+        padding: 0 1rem;
+    }
+    
+    .setting-card {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 1rem;
+        padding: 1.25rem;
+    }
+    
+    .setting-label {
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        text-align: center;
+    }
+    
+    .setting-badge {
+        margin-left: 0;
+    }
+    
+    .action-bar {
         padding: 1rem;
-        background-color: #f9fafb;
     }
     
-    .table th {
-        background-color: #f8f9fa;
-        border-color: #dee2e6;
+    .action-bar .d-flex {
+        flex-direction: column;
+        gap: 1rem;
     }
     
-    .badge {
-        font-size: 0.75rem;
+    .action-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        width: 100%;
     }
     
-    .btn-group-sm .btn {
-        padding: 0.25rem 0.5rem;
+    .action-buttons .btn {
+        width: 100%;
     }
+}
+
+@media (max-width: 480px) {
+    .setting-card {
+        margin-bottom: 1rem;
+        padding: 1rem;
+    }
+}
+
+/* Animation */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInFromLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.setting-card {
+    animation: fadeInUp 0.4s ease-out;
+}
+
+.setting-card:nth-child(1) { animation-delay: 0s; }
+.setting-card:nth-child(2) { animation-delay: 0.1s; }
+.setting-card:nth-child(3) { animation-delay: 0.2s; }
+.setting-card:nth-child(4) { animation-delay: 0.3s; }
+.setting-card:nth-child(5) { animation-delay: 0.4s; }
+.setting-card:nth-child(n+6) { animation-delay: 0.5s; }
+
+/* Focus States */
+.setting-card:focus-within {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(102, 126, 234, 0.15);
+}
 </style>
+{% endblock %}
 
+{% block scripts %}
+{{ super() }}
 <script>
-function resetToDefaults() {
-    if (confirm('Are you sure you want to reset all settings to their default values? This action cannot be undone.')) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '{{ url_for("settings") }}';
-        
-        const resetInput = document.createElement('input');
-        resetInput.type = 'hidden';
-        resetInput.name = 'reset_defaults';
-        resetInput.value = 'true';
-        
-        form.appendChild(resetInput);
-        document.body.appendChild(form);
-        form.submit();
-    }
-}
-
-function confirmDeleteUser(username, userId) {
-    if (confirm(`Are you sure you want to delete user "${username}"? This action cannot be undone.`)) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = `/users/${userId}/delete`;
-        
-        document.body.appendChild(form);
-        form.submit();
-    }
-}
-
-// Ensure disabled fields are not submitted and add visual feedback
 document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('settingsForm');
+    // Enhanced toggle functionality
+    const toggles = document.querySelectorAll('.toggle-input');
+    toggles.forEach(function(toggle) {
+        toggle.addEventListener('change', function() {
+            const label = this.nextElementSibling;
+            if (this.checked) {
+                label.textContent = label.textContent.replace('Disabled', 'Enabled');
+                this.value = 'true';
+                // Add visual feedback
+                this.closest('.setting-toggle').classList.add('enabled');
+            } else {
+                label.textContent = label.textContent.replace('Enabled', 'Disabled');
+                this.value = 'false';
+                this.closest('.setting-toggle').classList.remove('enabled');
+            }
+        });
+        
+        // Initialize state
+        if (toggle.checked) {
+            toggle.closest('.setting-toggle').classList.add('enabled');
+        }
+    });
+
+    // Form validation and submission
+    const form = document.getElementById('settings-form');
     if (form) {
-        // Add form submission handler
-        form.addEventListener('submit', function(e) {
-            // Remove disabled fields from form data (extra security)
-            const disabledInputs = form.querySelectorAll('input:disabled, select:disabled');
-            disabledInputs.forEach(input => {
-                input.removeAttribute('name');
+        // Auto-save indication
+        const inputs = form.querySelectorAll('input, select, textarea');
+        inputs.forEach(function(input) {
+            input.addEventListener('change', function() {
+                // Add visual indicator that changes are pending
+                const saveBtn = document.querySelector('button[type="submit"]');
+                if (saveBtn) {
+                    saveBtn.classList.add('btn-warning');
+                    saveBtn.classList.remove('btn-primary');
+                    saveBtn.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>Changes Pending';
+                }
             });
         });
-        
-        // Add tooltips to disabled fields
-        const disabledInputs = form.querySelectorAll('input:disabled, select:disabled');
-        disabledInputs.forEach(input => {
-            input.title = 'This is a system setting and cannot be modified through the UI';
-            input.style.cursor = 'not-allowed';
+
+        form.addEventListener('submit', function(e) {
+            const saveBtn = document.querySelector('button[type="submit"]');
+            
+            // Add loading state
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Saving...';
+            }
+            
+            // Simple validation for required fields
+            let isValid = true;
+            const requiredFields = form.querySelectorAll('[required]');
+            
+            requiredFields.forEach(function(field) {
+                if (!field.value.trim()) {
+                    isValid = false;
+                    field.classList.add('is-invalid');
+                    
+                    // Remove invalid class after user starts typing
+                    field.addEventListener('input', function() {
+                        this.classList.remove('is-invalid');
+                    });
+                }
+            });
+            
+            if (!isValid) {
+                e.preventDefault();
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = '<i class="fas fa-save me-2"></i>Save System Settings';
+                }
+                
+                // Show validation message
+                showNotification('Please fill in all required fields.', 'error');
+            }
         });
     }
+
+    // Enhanced input focus effects
+    const inputs = document.querySelectorAll('.setting-input');
+    inputs.forEach(function(input) {
+        input.addEventListener('focus', function() {
+            this.closest('.setting-item').classList.add('focused');
+        });
+        
+        input.addEventListener('blur', function() {
+            this.closest('.setting-item').classList.remove('focused');
+        });
+    });
+
+    // Smooth scroll to first error
+    function scrollToFirstError() {
+        const firstError = document.querySelector('.is-invalid');
+        if (firstError) {
+            firstError.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'center' 
+            });
+            firstError.focus();
+        }
+    }
+
+    // Simple notification system
+    function showNotification(message, type = 'info') {
+        // Remove existing notifications
+        const existing = document.querySelector('.notification');
+        if (existing) {
+            existing.remove();
+        }
+
+        const notification = document.createElement('div');
+        notification.className = `notification alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show`;
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1050;
+            min-width: 300px;
+            animation: slideInRight 0.3s ease-out;
+        `;
+        
+        notification.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, 5000);
+    }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        // Ctrl+S to save
+        if (e.ctrlKey && e.key === 's') {
+            e.preventDefault();
+            const form = document.getElementById('settings-form');
+            if (form) {
+                form.submit();
+            }
+        }
+        
+        // Escape to cancel
+        if (e.key === 'Escape') {
+            const cancelBtn = document.querySelector('a[href*="index"]');
+            if (cancelBtn && confirm('Are you sure you want to leave without saving?')) {
+                window.location.href = cancelBtn.href;
+            }
+        }
+    });
+
+    // Add tooltip functionality for help icons
+    const helpIcons = document.querySelectorAll('.setting-description');
+    helpIcons.forEach(function(icon) {
+        // Add hover effect for descriptions
+        icon.addEventListener('mouseenter', function() {
+            this.style.backgroundColor = '#f3f4f6';
+            this.style.padding = '0.5rem';
+            this.style.borderRadius = '0.5rem';
+            this.style.transition = 'all 0.2s ease';
+        });
+        
+        icon.addEventListener('mouseleave', function() {
+            this.style.backgroundColor = 'transparent';
+            this.style.padding = '0';
+        });
+    });
 });
+
+// CSS for animations
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideInRight {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    .setting-item.focused {
+        transform: scale(1.02);
+        transition: transform 0.2s ease;
+    }
+    
+    .setting-item.focused .setting-input {
+        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15);
+    }
+    
+    .setting-toggle.enabled .toggle-label {
+        color: var(--primary-color);
+        font-weight: 600;
+    }
+    
+    .is-invalid {
+        border-color: #dc3545 !important;
+        box-shadow: 0 0 0 4px rgba(220, 53, 69, 0.1) !important;
+    }
+`;
+document.head.appendChild(style);
+</script>
 {% endblock %}

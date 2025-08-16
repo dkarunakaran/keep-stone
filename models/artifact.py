@@ -8,7 +8,7 @@ class Artifact(Base):
     name = Column(String, nullable=False)
     content = Column(Text, nullable=False)
     images = Column(JSON, default=list)  # Will store list of {name: filename, path: relative_path}
-    type_id = Column(Integer, ForeignKey('type.id'))
+    type_name = Column(String, nullable=False)  # Project-level type storage
     project_id = Column(Integer, ForeignKey('project.id'), nullable=True)  # Allow null for migration
     expiry_date = Column(Date, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow())
@@ -56,9 +56,18 @@ class Artifact(Base):
         self.notification_count += 1
         self.last_notification_sent = datetime.utcnow()
 
+    def get_type_name(self):
+        """Get the artifact type name"""
+        return self.type_name or 'Unknown'
+    
+    def set_type_name(self, type_name):
+        """Set the type name"""
+        self.type_name = type_name
+    
     def is_token(self):
         """Check if artifact is a token"""
-        return self.type_id == 1  # Assuming 1 is Token type_id
+        type_name = self.get_type_name()
+        return type_name.lower() == 'token'
     
     def soft_delete(self):
         """Soft delete the artifact"""

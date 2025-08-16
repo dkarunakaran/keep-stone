@@ -17,6 +17,7 @@ class Project(Base):
     # Relationships
     creator = relationship("User", foreign_keys=[created_by])
     members = relationship("ProjectMember", back_populates="project", cascade="all, delete-orphan")
+    configs = relationship("ProjectConfig", back_populates="project", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f'<Project {self.name}>'
@@ -105,3 +106,12 @@ class Project(Base):
         ).subquery()
         
         return session.query(cls).filter(cls.id.in_(project_ids)).all()
+    
+    def get_user_membership(self, session, user_id):
+        """Get user's membership in this project"""
+        from .project_member import ProjectMember
+        return session.query(ProjectMember).filter_by(
+            project_id=self.id,
+            user_id=user_id,
+            is_active=True
+        ).first()

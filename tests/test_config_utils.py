@@ -261,5 +261,81 @@ class TestConfigValidation:
         assert values['types.bool_item'] is True
         assert values['types.list_item'] == ['item1', 'item2']
 
+class TestProjectConfigUtils:
+    """Test project configuration utilities"""
+    
+    @pytest.mark.unit
+    def test_initialize_project_configs_with_default_types(self):
+        """Test that project configuration is initialized with default types from config.yaml"""
+        try:
+            from utils.project_config_utils import initialize_project_configs, get_project_config
+            from models.project_config import ProjectConfig
+            
+            # Mock the YAML config to return our expected defaults
+            mock_yaml_config = {
+                'type': {
+                    'value': ['Token', 'Troubleshoot', 'Information', 'Other'],
+                    'edit': True,
+                    'project_settings': True
+                },
+                'default_type': {
+                    'value': 'Token',
+                    'edit': True,
+                    'project_settings': True
+                }
+            }
+            
+            # Mock database session and project
+            with patch('utils.project_config_utils.Session') as mock_session_class:
+                with patch('utils.project_config_utils.load_config_from_yaml', return_value=mock_yaml_config):
+                    with patch('utils.project_config_utils.get_project_level_config_keys', return_value=['type', 'default_type']):
+                        mock_session = MagicMock()
+                        mock_session_class.return_value = mock_session
+                        
+                        # Mock project exists
+                        mock_project = MagicMock()
+                        mock_session.query.return_value.get.return_value = mock_project
+                        
+                        # Mock no existing config
+                        mock_session.query.return_value.filter_by.return_value.first.return_value = None
+                        
+                        # Call the function
+                        result = initialize_project_configs(1)
+                        
+                        # Verify it tried to add configs
+                        assert mock_session.add.call_count >= 1  # Should add at least one config
+                        assert mock_session.commit.called
+                        assert result is True
+                        
+        except ImportError:
+            pytest.skip("Could not import project config utilities")
+    
+    @pytest.mark.unit 
+    def test_get_project_config_returns_parsed_list(self):
+        """Test that get_project_config returns parsed JSON list for project types"""
+        try:
+            from utils.project_config_utils import get_project_config
+            from models.project_config import ProjectConfig
+            
+            # Mock a project config with JSON list value
+            mock_config = MagicMock()
+            mock_config.get_parsed_value.return_value = ['Token', 'Troubleshoot', 'Information', 'Other']
+            
+            with patch('utils.project_config_utils.Session') as mock_session_class:
+                mock_session = MagicMock()
+                mock_session_class.return_value = mock_session
+                
+                # Mock query returns our config
+                mock_session.query.return_value.filter_by.return_value.first.return_value = mock_config
+                
+                # Call the function
+                result = get_project_config(1, 'type', [])
+                
+                # Verify it returns the parsed list
+                assert result == ['Token', 'Troubleshoot', 'Information', 'Other']
+                
+        except ImportError:
+            pytest.skip("Could not import project config utilities")
+
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])
