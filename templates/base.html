@@ -27,11 +27,12 @@
             border-radius: 1rem;
             box-shadow: var(--card-shadow);
             backdrop-filter: blur(20px);
-            margin: 2rem auto;
+            margin: 1rem auto;
             padding: 2rem;
-            min-height: 640px;
+            min-height: calc(100vh - 4rem);
             position: relative;
             z-index: 1;
+            max-width: 1400px;
         }
 
         .token-card {
@@ -123,11 +124,13 @@
         }
 
         .navbar {
-            background: rgba(255, 255, 255, 0.9) !important;
-            backdrop-filter: blur(12px);
-            box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
-            position: relative;
+            background: rgba(255, 255, 255, 0.95) !important;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            position: sticky;
+            top: 0;
             z-index: 1050;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.5);
         }        .navbar-brand {
             font-weight: 700;
             font-size: 1.5rem;
@@ -135,19 +138,66 @@
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
+            transition: all 0.3s ease;
+            padding: 0.5rem 1rem;
+            border-radius: 0.75rem;
+        }
+
+        .navbar-brand:hover {
+            transform: scale(1.05);
+            filter: drop-shadow(0 4px 8px rgba(99, 102, 241, 0.3));
         }
 
         .nav-link {
             font-weight: 500;
             color: rgb(71 85 105);
-            border-radius: 0.5rem;
-            padding: 0.5rem 1rem;
-            transition: all 0.2s ease;
+            border-radius: 0.75rem;
+            padding: 0.75rem 1.25rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
         }
 
         .nav-link:hover {
-            background: rgb(241 245 249);
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
             color: var(--primary-color);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+        }
+
+        .nav-link:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .nav-link:hover:before {
+            left: 100%;
+        }
+
+        /* Navigation artifact counter */
+        .nav-artifact-counter {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border: 1px solid #e2e8f0;
+            border-radius: 0.75rem;
+            padding: 0.5rem 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav-artifact-counter:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+            border-color: var(--primary-color);
+        }
+
+        .nav-artifact-counter .badge {
+            font-size: 0.75rem;
+            padding: 0.35em 0.6em;
         }
 
         .alert {
@@ -297,6 +347,126 @@
         .information-card {
             border-left: 4px solid #2563eb;
             background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        }
+
+        /* Settings/Modern Header Styling */
+        .settings-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            color: white;
+            box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
+        }
+
+        .settings-title {
+            font-weight: 700;
+            font-size: 1.5rem;
+            margin: 0;
+        }
+
+        .settings-subtitle {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+
+        /* Breadcrumb */
+        .breadcrumb-link {
+            color: #6b7280;
+            transition: color 0.2s ease;
+        }
+
+        .breadcrumb-link:hover {
+            color: var(--primary-color);
+        }
+
+        /* Settings Container */
+        .settings-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* Sequential Setting Cards */
+        .setting-card {
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            border: 1px solid #f1f5f9;
+            margin-bottom: 1.5rem;
+            padding: 1.5rem;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .setting-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+        }
+
+        .setting-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .setting-header {
+            margin-bottom: 1rem;
+        }
+
+        .setting-label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+
+        .setting-body {
+            color: #6b7280;
+        }
+
+        /* Dashboard specific styles */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .settings-title {
+                font-size: 1.25rem;
+            }
+            
+            .settings-header {
+                padding: 1rem;
+            }
+        }
+
+        /* Search highlighting */
+        mark {
+            background: linear-gradient(135deg, #fef3c7 0%, #fbbf24 100%);
+            color: #92400e;
+            padding: 0.1em 0.2em;
+            border-radius: 0.25rem;
+            font-weight: 600;
+        }
+
+        .search-highlight {
+            background: linear-gradient(135deg, #fef3c7 0%, #fbbf24 100%);
+            color: #92400e;
+            padding: 0.1em 0.2em;
+            border-radius: 0.25rem;
+            font-weight: 600;
         }
 
         .other-card {
@@ -470,9 +640,12 @@
             </div>
             
             <div class="navbar-nav ms-auto d-flex gap-3 align-items-center">
-                <a class="nav-link" href="{{ url_for('index') }}">
-                    <i class="fas fa-home me-2"></i>Dashboard
-                </a>
+                <!-- Artifact Counter -->
+                <div class="nav-artifact-counter d-flex align-items-center">
+                    <i class="fas fa-box me-2 text-primary"></i>
+                    <span class="badge bg-primary">{{ user_artifact_count|default(0) }}</span>
+                    <small class="ms-2 text-muted fw-medium">artifacts</small>
+                </div>
                 
                 <!-- User Info Dropdown -->
                 {% if current_user.is_authenticated %}
