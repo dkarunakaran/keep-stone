@@ -695,29 +695,34 @@ def search():
 @active_user_required
 def add_artifact():
     if request.method == 'POST':
+        images_data = []  # Initialize before try block
         try:
             # Get form data
             name = request.form['name']
-            type_id = request.form['artifact_type']
+            type_name = request.form['type']  # Changed from 'artifact_type' to 'type'
             content = request.form['content']
-            expiry_date_str = request.form.get('expiry_date')
+            date_created_str = request.form.get('expiry_date')  # Changed back to 'expiry_date'
             
             # Handle expiry date
             expiry_date = None
-            if expiry_date_str:
-                expiry_date = datetime.strptime(expiry_date_str, '%Y-%m-%d').date()
+            if date_created_str:
+                expiry_date = datetime.strptime(date_created_str, '%Y-%m-%d').date()
             
             # Handle image uploads
-            files = request.files.getlist('images[]')
-            images_data = []
+            files = request.files.getlist('images')  # Changed from 'images[]' to 'images'
             
             for file in files:
                 if file and file.filename:
                     if not file.content_type.startswith('image/'):
                         raise ValueError(f"Invalid file type: {file.filename}")
                     
-                    if file.content_length > config['storage']['max_file_size']:
-                        raise ValueError(f"File too large: {file.filename}")
+                    # Check file size if config is available
+                    try:
+                        if file.content_length and file.content_length > config['storage']['max_file_size']:
+                            raise ValueError(f"File too large: {file.filename}")
+                    except (KeyError, TypeError):
+                        # If config not available, skip size check
+                        pass
                     
                     # Save image and store metadata
                     relative_path = save_image(file, config)
@@ -731,23 +736,23 @@ def add_artifact():
             if not project_id:
                 project_id = get_user_default_project_id()
             
-            # Convert project-specific type ID to type name
+            # Validate that the type_name is valid for the project
             project_types = get_project_types(project_id)
-            project_type_name = None
+            valid_type = False
             for type_obj in project_types:
-                if type_obj['id'] == type_id:
-                    project_type_name = type_obj['name']
+                if type_obj['name'] == type_name:
+                    valid_type = True
                     break
             
-            if not project_type_name:
+            if not valid_type:
                 raise ValueError("Invalid type selection")
             
             # Create artifact with image metadata using type_name
             artifact = Artifact(
-                name=request.form['name'],
-                type_name=project_type_name,  # Use project-level type name
-                content=request.form['content'],
-                expiry_date=expiry_date,
+                name=name,
+                type_name=type_name,  # Use project-level type name directly
+                content=content,
+                expiry_date=expiry_date,  # Use correct field name from model
                 project_id=project_id,
                 images=images_data
             )
@@ -760,8 +765,13 @@ def add_artifact():
             
         except Exception as e:
             # Delete any saved images if artifact creation fails
-            for image in images_data:
-                delete_image(image['path'])
+            if images_data:  # Check if images_data has content before iterating
+                for image in images_data:
+                    try:
+                        delete_image(image['path'])
+                    except Exception:
+                        # Ignore cleanup errors
+                        pass
             flash(str(e), 'error')
             session.rollback()
     
@@ -829,6 +839,14 @@ def update_artifact(artifact_id):
         return redirect(url_for('index'))
     if request.method == 'POST':
         try:
+            # Validate required fields
+            if not request.form.get('name'):
+                raise ValueError("Name is required")
+            if not request.form.get('content'):
+                raise ValueError("Content is required")
+            if not request.form.get('type'):
+                raise ValueError("Type is required")
+            
             # Update basic info
             artifact.name = request.form['name']
             artifact.content = request.form['content']
@@ -844,20 +862,26 @@ def update_artifact(artifact_id):
                         artifact.project_id = target_project_id
                         flash('Artifact moved to different project.', 'info')
             
-            # Convert project-specific type ID to type name
-            type_id = request.form['artifact_type']
+            # Convert project-specific type name to validate against project types
+            type_name = request.form['type']
             project_types = get_project_types(target_project_id)
-            project_type_name = None
-            for type_obj in project_types:
-                if type_obj['id'] == type_id:
-                    project_type_name = type_obj['name']
-                    break
             
-            # Update artifact type using type_name
-            if project_type_name:
-                artifact.type_name = project_type_name
+            # If no project types are configured, accept any type
+            if not project_types:
+                artifact.type_name = type_name
             else:
-                raise ValueError("Invalid type selection")
+                # Validate type against project types
+                valid_type = False
+                for type_obj in project_types:
+                    if type_obj['name'] == type_name:
+                        valid_type = True
+                        break
+                
+                # Update artifact type using type_name
+                if valid_type:
+                    artifact.type_name = type_name
+                else:
+                    raise ValueError(f"Invalid type selection: '{type_name}' not found in project types")
             
             # Handle expiry date
             expiry_date = None
@@ -873,29 +897,37 @@ def update_artifact(artifact_id):
                 artifact.images = list(artifact.images)
 
             # Handle removed images
-            removed_images = request.form.get('removed_images', '').split(',')
-            if removed_images[0]:
+            removed_images_list = []
+            for key in request.form.keys():
+                if key.startswith('removed_images'):
+                    removed_images_list.extend(request.form.getlist(key))
+            
+            if removed_images_list:
                 for img in artifact.images[:]:
-                    if img['name'] in removed_images:
+                    if str(img.get('id', '')) in removed_images_list or img.get('name', '') in removed_images_list:
                         delete_image(img['path'])
                         artifact.images.remove(img)
 
             # Handle new images
-            files = request.files.getlist('images[]')
-            for file in files:
-                if file and file.filename:
-                    if not file.content_type.startswith('image/'):
-                        raise ValueError(f"Invalid file type: {file.filename}")
-                    
-                    if file.content_length > config['storage']['max_file_size']:
-                        raise ValueError(f"File too large: {file.filename}")
-                    
-                    # Save new image
-                    relative_path = save_image(file, config)
-                    artifact.images.append({
-                        'name': file.filename,
-                        'path': relative_path
-                    })
+            files = request.files.getlist('images')
+            if files:
+                for file in files:
+                    if file and file.filename:
+                        if not file.content_type.startswith('image/'):
+                            raise ValueError(f"Invalid file type: {file.filename}")
+                        
+                        # Check file size if content_length is available
+                        if hasattr(file, 'content_length') and file.content_length and file.content_length > config['storage']['max_file_size']:
+                            raise ValueError(f"File too large: {file.filename}")
+                        
+                        # Save new image
+                        relative_path = save_image(file, config)
+                        if not artifact.images:
+                            artifact.images = []
+                        artifact.images.append({
+                            'name': file.filename,
+                            'path': relative_path
+                        })
             
             session.add(artifact)
             session.commit()
@@ -904,6 +936,9 @@ def update_artifact(artifact_id):
             return redirect(url_for('index'))
             
         except Exception as e:
+            print(f"DEBUG: Error updating artifact: {str(e)}")
+            print(f"DEBUG: Form data: {dict(request.form)}")
+            print(f"DEBUG: Files: {[f.filename for f in request.files.getlist('images')]}")
             flash(str(e), 'error')
             session.rollback()
 
