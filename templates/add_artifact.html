@@ -5,123 +5,442 @@
 {% block head %}
 {{ super() }}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
-<style>
-    .editor-container {
-        max-width: 1200px;
-        margin: 0 auto;
-        background: white;
-        min-height: 100vh;
-        padding: 2rem;
-    }
-    .title-input { font-family: 'Georgia', serif; font-size: 2.5rem; font-weight: bold; border: none; width: 100%; margin-bottom: 1.5rem; padding: 0; }
-    .title-input:focus { outline: none; box-shadow: none; }
-    .type-select { border: none; color: #6b7280; padding-left: 0; margin-bottom: 2rem; font-size: 1.1rem; }
-    .type-select:focus { outline: none; box-shadow: none; }
-    .editor-toolbar { border: none; padding: 0; border-bottom: 1px solid #e5e7eb; margin-bottom: 1rem; }
-    .CodeMirror { border: none !important; padding: 0; font-family: 'Georgia', serif; font-size: 1.2rem; line-height: 1.8; }
-    .image-section { margin: 2rem 0; border-top: 1px solid #e5e7eb; padding-top: 2rem; }
-    .image-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
-    .image-item { position: relative; aspect-ratio: 16/9; border-radius: 0.5rem; overflow: hidden; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); }
-    .image-item img { width: 100%; height: 100%; object-fit: cover; }
-    .image-item .remove-btn { position: absolute; top: 0.5rem; right: 0.5rem; background: rgba(0,0,0,0.5); color: white; border: none; border-radius: 0.25rem; padding: 0.25rem 0.5rem; font-size: 0.875rem; opacity: 0; transition: opacity 0.3s ease; cursor: pointer; }
-    .image-item:hover .remove-btn { opacity: 1; }
-    .dropzone { border: 2px dashed #e5e7eb; border-radius: 0.5rem; padding: 2rem; text-align: center; cursor: pointer; transition: all 0.3s ease; }
-    .dropzone:hover { border-color: #6366f1; background-color: #f8fafc; }
-    .dropzone.disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
-    .image-count { display: block; margin-top: 0.5rem; color: #6b7280; font-size: 0.875rem; }
-    .floating-actions { position: fixed; bottom: 2rem; right: 2rem; display: flex; gap: 1rem; z-index: 1000; }
-    .date-input { border: none; color: #6b7280; padding-left: 0; margin-top: 2rem; font-size: 1.1rem; }
-    .date-input:focus { outline: none; box-shadow: none; }
-    @media (max-width: 768px) {
-        .floating-actions { position: static; margin-top: 2rem; padding: 1rem; background: white; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end; width: 100%; }
-    }
-</style>
 {% endblock %}
 
 {% block content %}
-<div class="editor-container">
+<div class="container-fluid px-0">
+    <!-- Header Section -->
+    <div class="settings-header mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2 class="settings-title mb-2">
+                    <i class="fas fa-plus me-3 text-primary"></i>Add New Artifact
+                </h2>
+                <p class="settings-subtitle mb-0">Create and document new project artifacts</p>
+            </div>
+            <a href="{{ url_for('index') }}" class="btn btn-outline-light">
+                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb bg-transparent p-0">
+            <li class="breadcrumb-item">
+                <a href="{{ url_for('index') }}" class="text-decoration-none breadcrumb-link">
+                    <i class="fas fa-home me-1"></i>Dashboard
+                </a>
+            </li>
+            <li class="breadcrumb-item active text-muted">Add New Artifact</li>
+        </ol>
+    </nav>
+
     <form method="POST" enctype="multipart/form-data" id="artifact-form">
-        <input type="text" 
-               class="title-input" 
-               id="name" 
-               name="name" 
-               required
-               placeholder="Title">
+        <div class="settings-container">
+            <!-- Basic Information Card -->
+            <div class="setting-card">
+                <div class="setting-header">
+                    <label class="setting-label">
+                        <i class="fas fa-tag me-2"></i>Basic Information
+                    </label>
+                    <div class="setting-description">
+                        <i class="fas fa-info-circle me-1"></i>Enter the basic details for your artifact
+                    </div>
+                </div>
+                
+                <div class="setting-input-container">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Artifact Title</label>
+                        <input type="text" 
+                               class="form-control setting-input" 
+                               id="name" 
+                               name="name" 
+                               required
+                               placeholder="Enter artifact title">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="type" class="form-label">Artifact Type</label>
+                        <select class="form-select setting-input" id="type" name="type" required>
+                            <option value="">Select type</option>
+                            {% if types %}
+                                {% for type in types %}
+                                <option value="{{ type.name }}" {% if default_type_id and type.id == default_type_id %}selected{% endif %}>
+                                    {{ type.name }}
+                                </option>
+                                {% endfor %}
+                            {% else %}
+                                <option value="Token">Token</option>
+                                <option value="Troubleshoot">Troubleshoot</option>
+                                <option value="Information">Information</option>
+                                <option value="Other">Other</option>
+                            {% endif %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="project_id" class="form-label">Project</label>
+                        <select class="form-select setting-input" id="project_id" name="project_id" required>
+                            {% if projects %}
+                                <option value="">Select project</option>
+                                {% for project in projects %}
+                                <option value="{{ project.id }}" {% if project.is_default or (default_project_id and project.id == default_project_id) %}selected{% endif %}>
+                                    {% if project.is_default %}⭐ {% endif %}{{ project.name }}
+                                </option>
+                                {% endfor %}
+                            {% else %}
+                                <option value="" disabled>No projects available</option>
+                            {% endif %}
+                        </select>
+                        <small class="text-muted mt-1 d-block">
+                            <i class="fas fa-info-circle me-1"></i>Choose which project this artifact will belong to
+                        </small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="expiry_date" class="form-label">Expiry Date</label>
+                        <input type="date" 
+                               class="form-control setting-input" 
+                               id="expiry_date" 
+                               name="expiry_date" 
+                               value="{{ expiry_date or '' }}">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content Card -->
+            <div class="setting-card">
+                <div class="setting-header">
+                    <label class="setting-label">
+                        <i class="fas fa-edit me-2"></i>Artifact Content
+                    </label>
+                    <div class="setting-description">
+                        <i class="fas fa-info-circle me-1"></i>Write the main content of your artifact using Markdown
+                    </div>
+                </div>
+                
+                <div class="setting-input-container">
+                    <textarea id="content" name="content" style="display: none;"></textarea>
+                </div>
+            </div>
+
+            <!-- Images Card -->
+            <div class="setting-card">
+                <div class="setting-header">
+                    <label class="setting-label">
+                        <i class="fas fa-images me-2"></i>Artifact Images
+                    </label>
+                    <div class="setting-description">
+                        <i class="fas fa-info-circle me-1"></i>Upload images related to this artifact (max 10)
+                    </div>
+                </div>
+                
+                <div class="setting-input-container">
+                    <div class="image-gallery" id="image-gallery"></div>
+                    
+                    <div class="dropzone" id="dropzone">
+                        <i class="fas fa-cloud-upload-alt fa-2x mb-2 text-muted"></i>
+                        <p class="mb-2">Drop images here or click to browse</p>
+                        <span class="image-count" id="image-count">0 / 10 images</span>
+                        <input type="file" id="images" name="images" multiple accept="image/*" style="display: none;">
+                    </div>
+                </div>
+            </div>
+        </div>
         
-        <div class="row mb-3">
-            <div class="col-md-6">
-                <select class="form-select type-select" 
-                        id="artifact_type" 
-                        name="artifact_type" 
-                        required>
-                    <option value="" disabled {% if not default_type_id %}selected{% endif %}>Select type</option>
-                    {% for type in types %}
-                    <option value="{{ type.id }}" {% if default_type_id and type.id == default_type_id %}selected{% endif %}>{{ type.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-6">
-                <select class="form-select type-select" 
-                        id="project_id" 
-                        name="project_id" 
-                        required>
-                    <option value="" disabled>Select project</option>
-                    {% for project in projects %}
-                    <option value="{{ project.id }}" {% if default_project_id and project.id == default_project_id %}selected{% endif %}>
-                        {% if project.is_default %}⭐ {% endif %}{{ project.name }}
-                    </option>
-                    {% endfor %}
-                </select>
-                <small class="text-muted mt-1 d-block">
-                    <i class="fas fa-info-circle me-1"></i>Only projects you have access to are shown
-                </small>
+        <!-- Action Bar -->
+        <div class="action-bar">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="action-buttons">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Create Artifact
+                    </button>
+                    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary ms-3">
+                        <i class="fas fa-times me-2"></i>Cancel
+                    </a>
+                </div>
+                
+                <div class="action-info">
+                    <div class="info-badge">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Artifact will be saved to <strong>selected project</strong>
+                    </div>
+                </div>
             </div>
         </div>
-
-        <div class="alert alert-info mb-3" id="token-project-info" style="display: none;">
-            <i class="fas fa-key me-2"></i>
-            <strong>Token Project Scope:</strong> This token will only be accessible to members of the selected project.
-        </div>
-
-        <textarea id="content" name="content"></textarea>
-
-        <div class="image-section">
-            <h5 class="text-muted mb-3">Images</h5>
-            
-            <div class="dropzone" id="dropzone">
-                <input type="file" 
-                       class="d-none" 
-                       id="images" 
-                       name="images[]" 
-                       accept="image/*" 
-                       multiple>
-                <i class="fas fa-cloud-upload-alt fa-2x text-primary mb-2"></i>
-                <p class="mb-1">Drag and drop images here</p>
-                <small class="text-muted">or click to select files</small>
-                <span class="image-count">0/10 images</span>
-            </div>
-
-            <div class="image-gallery" id="imagePreview"></div>
-        </div>
-
-        <input type="date" 
-               class="form-control date-input" 
-               id="expiry_date" 
-               name="expiry_date"
-               placeholder="Set expiry date (optional)">
     </form>
 </div>
 
-<div class="floating-actions">
-    <a href="{{ url_for('index') }}" class="btn btn-light">
-        Cancel
-    </a>
-    <button type="submit" 
-            form="artifact-form" 
-            class="btn btn-primary px-4">
-        Publish
-    </button>
-</div>
+<style>
+/* Header Styling */
+.settings-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 1.5rem;
+    border-radius: 1rem;
+    color: white;
+    box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
+}
+
+.settings-title {
+    font-weight: 700;
+    font-size: 1.5rem;
+    margin: 0;
+}
+
+.settings-subtitle {
+    font-size: 1rem;
+    opacity: 0.9;
+}
+
+/* Breadcrumb */
+.breadcrumb-link {
+    color: #6b7280;
+    transition: color 0.2s ease;
+}
+
+.breadcrumb-link:hover {
+    color: var(--primary-color);
+}
+
+/* Settings Container */
+.settings-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Setting Cards */
+.setting-card {
+    background: white;
+    border-radius: 1rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    border: 1px solid #f1f5f9;
+    margin-bottom: 1.5rem;
+    padding: 1.5rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.setting-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+.setting-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.setting-header {
+    margin-bottom: 1.5rem;
+}
+
+.setting-label {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    font-size: 1.2rem;
+    color: #1f2937;
+    margin-bottom: 0.5rem;
+}
+
+.setting-description {
+    color: #6b7280;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+}
+
+.setting-input-container {
+    margin-top: 1rem;
+}
+
+.setting-input {
+    border: 2px solid #e5e7eb;
+    border-radius: 0.75rem;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    background: #f8fafc;
+}
+
+.setting-input:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    background: white;
+    outline: none;
+}
+
+/* Image Gallery */
+.image-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.image-item {
+    position: relative;
+    aspect-ratio: 16/9;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease;
+}
+
+.image-item:hover {
+    transform: translateY(-2px);
+}
+
+.image-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.image-item .remove-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: rgba(239, 68, 68, 0.9);
+    color: white;
+    border: none;
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+    font-size: 0.875rem;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    cursor: pointer;
+}
+
+.image-item:hover .remove-btn {
+    opacity: 1;
+}
+
+.dropzone {
+    border: 2px dashed #d1d5db;
+    border-radius: 1rem;
+    padding: 3rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: #f8fafc;
+}
+
+.dropzone:hover {
+    border-color: #667eea;
+    background: #f0f4ff;
+}
+
+.dropzone.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.image-count {
+    display: block;
+    margin-top: 0.5rem;
+    color: #6b7280;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+/* Action Bar */
+.action-bar {
+    background: white;
+    padding: 1.5rem 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    border: 1px solid #f1f5f9;
+    margin-top: 2rem;
+    position: sticky;
+    bottom: 2rem;
+    z-index: 10;
+}
+
+.action-buttons .btn {
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.btn-outline-secondary {
+    border: 2px solid #e5e7eb;
+    color: #6b7280;
+    background: transparent;
+}
+
+.btn-outline-secondary:hover {
+    border-color: #d1d5db;
+    background: #f9fafb;
+    color: #374151;
+}
+
+.info-badge {
+    background: linear-gradient(135deg, #e0f2fe 0%, #f3e5f5 100%);
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .settings-header {
+        padding: 1rem;
+        text-align: center;
+    }
+    
+    .settings-title {
+        font-size: 1.25rem;
+    }
+    
+    .settings-container {
+        padding: 0 1rem;
+    }
+    
+    .action-bar .d-flex {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .action-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        width: 100%;
+    }
+    
+    .action-buttons .btn {
+        width: 100%;
+    }
+    
+    .image-gallery {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    }
+}
+</style>
+
 {% endblock %}
 
 {% block scripts %}
@@ -133,48 +452,60 @@
         element: document.getElementById('content'),
         spellChecker: false,
         autofocus: true,
-        placeholder: 'Write your content here...',
+        placeholder: 'Write your artifact content here using Markdown...',
         toolbar: [
-            'bold', 'italic', 'heading','heading-1','heading-2', 'heading-3', '|',
-            'quote', 'unordered-list', 'ordered-list','code','horizontal-rule', '|',
+            'bold', 'italic', 'heading', 'heading-1', 'heading-2', 'heading-3', '|',
+            'quote', 'unordered-list', 'ordered-list', 'code', 'horizontal-rule', '|',
             'link', 'image', 'preview', 'side-by-side', 'fullscreen', '|',
-            'undo', 'redo', 'strikethrough', 'guide',
-            'table'
+            'undo', 'redo', 'strikethrough', 'guide', 'table'
         ]
     });
 
-    // Handle artifact type change to show token project info
-    const artifactTypeSelect = document.getElementById('artifact_type');
-    const tokenProjectInfo = document.getElementById('token-project-info');
+    // Handle project selection to update info badge
+    const projectSelect = document.getElementById('project_id');
+    const infoBadge = document.querySelector('.info-badge');
     
-    function toggleTokenInfo() {
-        const selectedType = artifactTypeSelect.options[artifactTypeSelect.selectedIndex];
-        if (selectedType && selectedType.text === 'Token') {
-            tokenProjectInfo.style.display = 'block';
+    function updateInfoBadge() {
+        const selectedOption = projectSelect.options[projectSelect.selectedIndex];
+        if (selectedOption && selectedOption.value) {
+            const projectName = selectedOption.text.replace('⭐ ', '');
+            infoBadge.innerHTML = `<i class="fas fa-info-circle me-2"></i>Artifact will be saved to <strong>${projectName}</strong>`;
         } else {
-            tokenProjectInfo.style.display = 'none';
+            infoBadge.innerHTML = '<i class="fas fa-info-circle me-2"></i>Artifact will be saved to <strong>selected project</strong>';
         }
     }
     
-    // Check initial state
-    toggleTokenInfo();
+    // Listen for project changes
+    projectSelect.addEventListener('change', updateInfoBadge);
     
-    // Listen for changes
-    artifactTypeSelect.addEventListener('change', toggleTokenInfo);
+    // Initialize info badge on page load
+    updateInfoBadge();
 
     // Initialize file handling variables
     const dropzone = document.getElementById('dropzone');
     const imageInput = document.getElementById('images');
-    const previewContainer = document.getElementById('imagePreview');
+    const imageGallery = document.getElementById('image-gallery');
+    const imageCount = document.getElementById('image-count');
     const maxFiles = 10;
     const maxFileSize = 5 * 1024 * 1024; // 5MB
 
     // Store files in a Map to maintain file objects
     const fileMap = new Map();
 
+    function updateImageCount() {
+        const currentCount = imageGallery.children.length;
+        imageCount.textContent = `${currentCount} / ${maxFiles} images`;
+        
+        if (currentCount >= maxFiles) {
+            dropzone.classList.add('disabled');
+        } else {
+            dropzone.classList.remove('disabled');
+        }
+    }
+
     function updateImageInput() {
         const dt = new DataTransfer();
-        const previews = previewContainer.querySelectorAll('.image-item');
+        const previews = imageGallery.querySelectorAll('.image-item');
         
         // Add files that have previews to DataTransfer
         previews.forEach(preview => {
@@ -187,12 +518,10 @@
 
         // Update the file input
         imageInput.files = dt.files;
-        console.log('Files in input:', Array.from(imageInput.files).map(f => f.name));
-        console.log('Total files:', imageInput.files.length);
     }
 
     function handleFiles(files) {
-        const remainingSlots = Math.max(0, maxFiles - previewContainer.children.length);
+        const remainingSlots = Math.max(0, maxFiles - imageGallery.children.length);
         const filesToProcess = Array.from(files).slice(0, remainingSlots);
         
         if (files.length > remainingSlots) {
@@ -237,7 +566,7 @@
                     updateImageCount();
                 };
 
-                previewContainer.appendChild(div);
+                imageGallery.appendChild(div);
                 updateImageCount();
                 updateImageInput();
             };
@@ -253,7 +582,6 @@
     };
     
     imageInput.onchange = (e) => {
-        e.preventDefault();
         handleFiles(e.target.files);
     };
 
@@ -267,16 +595,16 @@
     ['dragenter', 'dragover'].forEach(eventName => {
         dropzone.addEventListener(eventName, () => {
             if (!dropzone.classList.contains('disabled')) {
-                dropzone.style.borderColor = '#6366f1';
-                dropzone.style.backgroundColor = '#f8fafc';
+                dropzone.style.borderColor = '#667eea';
+                dropzone.style.backgroundColor = '#f0f4ff';
             }
         });
     });
 
     ['dragleave', 'drop'].forEach(eventName => {
         dropzone.addEventListener(eventName, () => {
-            dropzone.style.borderColor = '#e5e7eb';
-            dropzone.style.backgroundColor = 'transparent';
+            dropzone.style.borderColor = '#d1d5db';
+            dropzone.style.backgroundColor = '#f8fafc';
         });
     });
 
@@ -288,8 +616,5 @@
 
     // Initialize image count
     updateImageCount();
-
-    // Set minimum date to today
-    document.getElementById('expiry_date').min = new Date().toISOString().split('T')[0];
 </script>
 {% endblock %}
