@@ -74,7 +74,10 @@ def generate_config_description(key):
         'email.timezone': 'Timezone for date calculations',
         
         # General settings
-        'general.default_type': 'Default artifact type to pre-select when creating new artifacts',
+        'default_type': 'Default artifact type to pre-select when creating new artifacts',
+        
+        # Types
+        'type': 'Available artifact types (comma-separated list)',
         
         # Backup settings
         'backup.enabled': 'Enable or disable automatic weekly backups',
@@ -231,8 +234,21 @@ def get_config_for_settings():
     try:
         configs = session.query(Config).order_by(Config.key).all()
         
-        # Filter out project-related config items (these should not appear in settings UI)
-        excluded_keys = {'ui.default_project_id'}  # Add other project keys here if needed
+        # Filter out project-related config items (these should not appear in system settings UI)
+        # Get project-level config keys to exclude from system settings
+        yaml_config = load_config_from_yaml()
+        flat_config = flatten_dict(yaml_config)
+        
+        project_level_keys = set()
+        for key, value, is_editable in flat_config:
+            # Check if this config has project_settings: True
+            if isinstance(value, dict) and value.get('project_settings', False):
+                project_level_keys.add(key)
+            elif key in yaml_config and isinstance(yaml_config[key], dict) and yaml_config[key].get('project_settings', False):
+                project_level_keys.add(key)
+        
+        # Also exclude other system keys
+        excluded_keys = {'ui.default_project_id'}.union(project_level_keys)
         configs = [config for config in configs if config.key not in excluded_keys]
         
         # Load YAML config to check editability
@@ -247,7 +263,11 @@ def get_config_for_settings():
         # Group configs by section
         grouped_configs = {}
         for config in configs:
-            if '.' in config.key:
+            if config.key == 'type':
+                section = 'type'  # Special section for artifact types
+            elif config.key == 'default_type':
+                section = 'type'  # Group with artifact types
+            elif '.' in config.key:
                 section = config.key.split('.')[0]
             else:
                 section = 'general'
@@ -280,9 +300,18 @@ def get_config_for_settings():
             except (json.JSONDecodeError, TypeError):
                 config_dict['display_value'] = config.value
                 # Determine input type based on key and value
-                if config.key == 'general.default_type':
+                if config.key == 'default_type':
                     config_dict['input_type'] = 'select'
-                    config_dict['options'] = ['Token', 'Troubleshoot', 'Information', 'Other']
+                    # Get options from the type configuration
+                    type_config = session.query(Config).filter_by(key='type').first()
+                    if type_config:
+                        try:
+                            type_options = json.loads(type_config.value)
+                            config_dict['options'] = type_options if isinstance(type_options, list) else ['Token', 'Troubleshoot', 'Information', 'Other']
+                        except (json.JSONDecodeError, TypeError):
+                            config_dict['options'] = ['Token', 'Troubleshoot', 'Information', 'Other']
+                    else:
+                        config_dict['options'] = ['Token', 'Troubleshoot', 'Information', 'Other']
                 elif config.key == 'backup.backup_day':
                     config_dict['input_type'] = 'select'
                     config_dict['options'] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
@@ -312,7 +341,8 @@ def get_section_title(section):
         'trim': 'Display & Formatting',
         'email': 'Email & Notifications',
         'general': 'General Settings',
-        'backup': 'Backup & Recovery Settings'
+        'backup': 'Backup & Recovery Settings',
+        'type': 'Artifact Types'
     }
     return section_titles.get(section, section.replace('_', ' ').title())
 
@@ -324,7 +354,8 @@ def get_section_icon(section):
         'trim': 'fas fa-eye',
         'email': 'fas fa-envelope',
         'general': 'fas fa-cog',
-        'backup': 'fas fa-shield-alt'
+        'backup': 'fas fa-shield-alt',
+        'type': 'fas fa-shapes'
     }
     return section_icons.get(section, 'fas fa-cog')
 

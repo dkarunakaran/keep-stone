@@ -14,6 +14,7 @@ from utility import save_image, delete_image
 from dotenv import load_dotenv
 from utils.config_utils import load_config, update_config, get_config_for_settings, get_section_title, get_section_icon, reset_config_to_defaults
 from utils.auth_utils import admin_required, active_user_required, get_safe_redirect_url, init_default_admin, validate_user_data, check_unique_user_fields, format_user_for_display
+from utils.project_config_utils import get_project_config, initialize_project_configs
 
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage, PageBreak, Table, TableStyle
@@ -35,12 +36,11 @@ parent_dir = ".."
 sys.path.append(parent_dir)
 import models.base
 import models.artifact
-import models.type
 import models.config
 import models.project
 import models.project_member
+import models.project_config
 import models.user
-import models.project_member
 
 # Fix for template rendering
 import sys
@@ -91,7 +91,6 @@ utility.create_database(config=config)
 Session = sessionmaker(bind=models.base.engine)
 session = Session()
 Artifact = models.artifact.Artifact
-Type = models.type.Type
 Project = models.project.Project
 User = models.user.User
 ProjectMember = models.project_member.ProjectMember
@@ -112,6 +111,40 @@ def inject_helpers():
         today=date.today(),
         config=config
     )
+
+@app.context_processor
+def inject_navigation_context():
+    """Inject navigation-specific context including project-level types"""
+    if not current_user.is_authenticated:
+        return {}
+    
+    # Get current project context from request args
+    project_filter = request.args.get('project', '')
+    current_project_id = None
+    
+    if project_filter == 'default':
+        current_project_id = get_user_default_project_id()
+    elif project_filter and project_filter != 'all':
+        try:
+            current_project_id = int(project_filter)
+        except (ValueError, TypeError):
+            current_project_id = None
+    
+    # Get appropriate types for navigation
+    if current_project_id:
+        # Single project - use its specific types
+        nav_types = get_project_types(current_project_id)
+    else:
+        # All projects or no specific project - collect all types from user's accessible projects
+        nav_types = get_all_user_project_types()
+    
+    # Get projects for navigation
+    nav_projects = get_all_projects()
+    
+    return {
+        'nav_types': nav_types,
+        'nav_projects': nav_projects
+    }
 
 # Create markdown renderer
 markdowner = Markdown(extras=["tables", "fenced-code-blocks"])
@@ -416,6 +449,63 @@ def delete_user(user_id):
     
     return redirect(url_for('user_management'))
 
+@app.route('/get_project_types')
+@login_required
+@active_user_required
+def get_project_types_api():
+    """API endpoint to get types for a specific project or all projects"""
+    project_filter = request.args.get('project', '')
+    current_project_id = None
+    
+    if project_filter == 'default':
+        current_project_id = get_user_default_project_id()
+    elif project_filter and project_filter != 'all':
+        try:
+            current_project_id = int(project_filter)
+        except (ValueError, TypeError):
+            current_project_id = None
+    
+    # Get appropriate types
+    if current_project_id:
+        # Single project - use its specific types
+        types = get_project_types(current_project_id)
+    else:
+        # All projects or no specific project - collect all types from user's accessible projects
+        types = get_all_user_project_types()
+    
+    return jsonify({'types': types})
+
+def get_project_types(project_id):
+    """Get types for a specific project from project_config"""
+    if not project_id:
+        return []
+    
+    # Get types from project config
+    types_list = get_project_config(project_id, 'type', [])
+    if not types_list:
+        # Return empty list if no project-specific types configured
+        return []
+    
+    # Create list of dicts with id as index and name from project config
+    return [{'id': str(i), 'name': type_name} for i, type_name in enumerate(types_list)]
+
+def get_all_user_project_types():
+    """Get all unique types from all projects accessible to the user"""
+    accessible_project_ids = get_user_accessible_project_ids()
+    all_types = set()
+    
+    for project_id in accessible_project_ids:
+        project_types = get_project_types(project_id)
+        for type_obj in project_types:
+            all_types.add(type_obj['name'])
+    
+    # If no types found from projects, return empty list
+    if not all_types:
+        return []
+    
+    # Convert to list of dicts with sequential IDs
+    return [{'id': str(i), 'name': type_name} for i, type_name in enumerate(sorted(all_types))]
+
 @app.route('/')
 @login_required
 @active_user_required
@@ -424,20 +514,53 @@ def index():
     project_filter = request.args.get('project', 'default')  # Default to showing default project
     show_all = request.args.get('type') == 'all'
     
-    # Get default type from config if no type filter is specified and not showing all
-    if not type_filter and not show_all:
-        default_type_name = config.get('general', {}).get('default_type', 'Token')
-        # Find the ID of the default type
-        default_type = session.query(Type).filter(Type.name == default_type_name).first()
-        if default_type:
-            type_filter = str(default_type.id)
+    # Determine current project ID for type filtering
+    current_project_id = None
+    if project_filter == 'default':
+        current_project_id = get_user_default_project_id()
+    elif project_filter and project_filter != 'all':
+        current_project_id = int(project_filter)
+    
+    # Get project-specific types for dropdown
+    if current_project_id:
+        # Single project - use its specific types
+        project_types = get_project_types(current_project_id)
+        types_dict = {t['id']: t['name'] for t in project_types}
+        types = project_types
+    else:
+        # All projects or no specific project - collect all types from user's accessible projects
+        all_user_types = get_all_user_project_types()
+        types_dict = {t['id']: t['name'] for t in all_user_types}
+        types = all_user_types
+    
+    # Get default type from project config if no type filter is specified and not showing all
+    if not type_filter and not show_all and current_project_id:
+        default_type_name = get_project_config(current_project_id, 'default_type', 'Token')
+        # Find the type in project types
+        for type_obj in project_types:
+            if type_obj['name'] == default_type_name:
+                type_filter = type_obj['id']
+                break
+    elif not type_filter and not show_all:
+        # Use project default type if available
+        default_type_name = get_project_config(current_project_id, 'default_type', '') if current_project_id else ''
+        if default_type_name:
+            # Find the type in current types
+            for type_id, type_name in types_dict.items():
+                if type_name == default_type_name:
+                    type_filter = type_id
+                    break
     
     # Start with base query - no search filtering on index page
     query = session.query(Artifact).filter(Artifact.deleted == False)
     
     # Apply type filter only if specifically selected and not showing all
     if type_filter and not show_all:
-        query = query.filter(Artifact.type_id == type_filter)
+        # Get the type name from the types dictionary
+        type_name = types_dict.get(type_filter)
+        if type_name:
+            # Filter by type_name directly
+            query = query.filter(Artifact.type_name == type_name)
     
     # Apply project filter
     if project_filter == 'default':
@@ -463,10 +586,6 @@ def index():
     # Get final results
     artifacts = query.order_by(Artifact.expiry_date.asc()).all()
     
-    # Get types for dropdown
-    types = session.query(Type).all()
-    types_dict = {t.id: t.name for t in types}
-    
     # Get projects for dropdown
     projects = get_all_projects()
     default_project = get_user_default_project()
@@ -491,6 +610,25 @@ def search():
     type_filter = request.args.get('type', '')
     project_filter = request.args.get('project', '')  # New project filter
     
+    # Determine current project ID for type filtering
+    current_project_id = None
+    if project_filter == 'default':
+        current_project_id = get_user_default_project_id()
+    elif project_filter and project_filter != 'all':
+        current_project_id = int(project_filter)
+    
+    # Get project-specific types for dropdown
+    if current_project_id:
+        # Single project - use its specific types
+        project_types = get_project_types(current_project_id)
+        types_dict = {t['id']: t['name'] for t in project_types}
+        types = project_types
+    else:
+        # All projects or no specific project - collect all types from user's accessible projects
+        all_user_types = get_all_user_project_types()
+        types_dict = {t['id']: t['name'] for t in all_user_types}
+        types = all_user_types
+    
     # Start with base query
     query = session.query(Artifact).filter(Artifact.deleted == False)
     
@@ -505,7 +643,11 @@ def search():
     
     # Apply type filter only if specifically selected
     if type_filter:
-        query = query.filter(Artifact.type_id == type_filter)
+        # Get the type name from the types dictionary
+        type_name = types_dict.get(type_filter)
+        if type_name:
+            # Filter by type_name directly
+            query = query.filter(Artifact.type_name == type_name)
     
     # Apply project filter
     if project_filter == 'default':
@@ -530,10 +672,6 @@ def search():
     
     # Get final results
     artifacts = query.order_by(Artifact.expiry_date.asc()).all()
-    
-    # Get types for dropdown
-    types = session.query(Type).all()
-    types_dict = {t.id: t.name for t in types}
     
     # Get projects for dropdown
     projects = get_all_projects()
@@ -593,10 +731,21 @@ def add_artifact():
             if not project_id:
                 project_id = get_user_default_project_id()
             
-            # Create artifact with image metadata
+            # Convert project-specific type ID to type name
+            project_types = get_project_types(project_id)
+            project_type_name = None
+            for type_obj in project_types:
+                if type_obj['id'] == type_id:
+                    project_type_name = type_obj['name']
+                    break
+            
+            if not project_type_name:
+                raise ValueError("Invalid type selection")
+            
+            # Create artifact with image metadata using type_name
             artifact = Artifact(
                 name=request.form['name'],
-                type_id=request.form['artifact_type'],
+                type_name=project_type_name,  # Use project-level type name
                 content=request.form['content'],
                 expiry_date=expiry_date,
                 project_id=project_id,
@@ -617,17 +766,26 @@ def add_artifact():
             session.rollback()
     
     # GET request - show form
-    types = session.query(Type).all()
+    # Get user's default project for type filtering
+    default_project_id = get_user_default_project_id()
+    
+    # Get project-specific types
+    if default_project_id:
+        project_types = get_project_types(default_project_id)
+        types = project_types
+        default_type_name = get_project_config(default_project_id, 'default_type', 'Token')
+    else:
+        # Use empty types list if no default project
+        types = []
+        default_type_name = 'Token'
+    
     projects = get_all_projects()
     
-    # Get default type from config
-    default_type_name = config.get('general', {}).get('default_type', 'Token')
-    default_type_id = None
-    
     # Find the ID of the default type
+    default_type_id = None
     for type_obj in types:
-        if type_obj.name == default_type_name:
-            default_type_id = type_obj.id
+        if type_obj['name'] == default_type_name:
+            default_type_id = type_obj['id']
             break
     
     return render_template('add_artifact.html', 
@@ -674,7 +832,32 @@ def update_artifact(artifact_id):
             # Update basic info
             artifact.name = request.form['name']
             artifact.content = request.form['content']
-            artifact.type_id = request.form['artifact_type']
+            
+            # Handle project change (only for admins)
+            target_project_id = artifact.project_id  # Default to current project
+            if current_user.is_admin and 'project_id' in request.form:
+                new_project_id = request.form['project_id']
+                if new_project_id != str(artifact.project_id):
+                    # Verify admin has access to the new project
+                    if user_has_project_access(int(new_project_id)):
+                        target_project_id = int(new_project_id)
+                        artifact.project_id = target_project_id
+                        flash('Artifact moved to different project.', 'info')
+            
+            # Convert project-specific type ID to type name
+            type_id = request.form['artifact_type']
+            project_types = get_project_types(target_project_id)
+            project_type_name = None
+            for type_obj in project_types:
+                if type_obj['id'] == type_id:
+                    project_type_name = type_obj['name']
+                    break
+            
+            # Update artifact type using type_name
+            if project_type_name:
+                artifact.type_name = project_type_name
+            else:
+                raise ValueError("Invalid type selection")
             
             # Handle expiry date
             expiry_date = None
@@ -724,8 +907,20 @@ def update_artifact(artifact_id):
             flash(str(e), 'error')
             session.rollback()
 
-    types = session.query(Type).all()
-    return render_template('update_artifact.html', artifact=artifact, types=types)
+    # Get project-specific types for the artifact's project
+    project_types = get_project_types(artifact.project_id)
+    types = project_types
+    
+    # Get current artifact's type name for template selection
+    current_type_name = artifact.get_type_name()
+    
+    projects = get_all_projects()
+    return render_template('update_artifact.html',
+                         artifact=artifact, 
+                         types=types,
+                         projects=projects,
+                         current_type_name=current_type_name,
+                         is_admin=current_user.is_admin)
 
 @app.route('/artifact/<int:artifact_id>')
 @login_required
@@ -741,9 +936,11 @@ def artifact_detail(artifact_id):
         flash('You do not have access to this artifact.', 'error')
         return redirect(url_for('index'))
     
-    # Get type name
-    type_obj = session.query(Type).filter(Type.id==artifact.type_id).first()
-    type_name = type_obj.name if type_obj else 'Unknown'
+    # Get type name using the new method
+    type_name = artifact.get_type_name()
+    
+    # Get project information
+    project = session.query(Project).filter(Project.id==artifact.project_id).first()
     
     # Calculate status
     if artifact.expiry_date is None:
@@ -773,7 +970,8 @@ def artifact_detail(artifact_id):
                          status_badge=status_badge,
                          status_text=status_text,
                          status_icon=status_icon,
-                         config=config)
+                         config=config,
+                         project=project)
 
 
 @app.route('/static/uploads/<path:filename>')
@@ -928,9 +1126,8 @@ def export_artifact_pdf(artifact_id):
         story.append(Spacer(1, 20))
 
         # Type badge
-        artifact_type = session.query(Type).filter_by(id=artifact.type_id).first()
-        if artifact_type:
-            story.append(Paragraph(f"Type: {artifact_type.name}", type_style))
+        type_name = artifact.get_type_name()
+        story.append(Paragraph(f"Type: {type_name}", type_style))
         
         # Meta information table
         meta_data = []
@@ -1295,6 +1492,9 @@ def add_project():
         
         session.commit()
         
+        # Initialize project configurations with default values (including project types)
+        initialize_project_configs(project.id)
+        
         flash(f'Project "{name}" created successfully!', 'success')
         return redirect(url_for('projects'))
     except Exception as e:
@@ -1634,6 +1834,78 @@ def remove_project_member(project_id, user_id):
         flash(f'Error removing member: {str(e)}', 'error')
     
     return redirect(url_for('project_members', project_id=project_id))
+
+# Project Settings Routes
+@app.route('/projects/<int:project_id>/settings', methods=['GET', 'POST'])
+@login_required
+@active_user_required
+def project_settings(project_id):
+    """Project-specific settings page"""
+    from utils.project_config_utils import (
+        get_project_configs_for_settings, 
+        update_project_config, 
+        initialize_project_configs,
+        get_project_level_config_keys
+    )
+    
+    # Check if user has access to this project
+    project = session.query(Project).get(project_id)
+    if not project:
+        flash('Project not found.', 'error')
+        return redirect(url_for('projects'))
+    
+    # Check permissions - only admin or project members can access settings
+    if not current_user.is_admin:
+        membership = project.get_user_membership(session, current_user.id)
+        if not membership or membership.role not in ['owner', 'admin']:
+            flash('You do not have permission to access project settings.', 'error')
+            return redirect(url_for('projects'))
+    
+    if request.method == 'POST':
+        try:
+            # Get project-level config keys
+            project_keys = get_project_level_config_keys()
+            
+            # Get all form data
+            updates = {}
+            for key in request.form:
+                if key in project_keys:
+                    value = request.form[key]
+                    
+                    # Convert values to appropriate types
+                    if key == 'type':
+                        # Handle arrays
+                        value = [t.strip() for t in value.split(',') if t.strip()]
+                    elif value.lower() in ('true', 'false'):
+                        value = value.lower() == 'true'
+                    
+                    updates[key] = value
+            
+            # Update each config item
+            success_count = 0
+            for key, value in updates.items():
+                if update_project_config(project_id, key, value):
+                    success_count += 1
+            
+            if success_count > 0:
+                flash(f'Successfully updated {success_count} project configuration(s)!', 'success')
+            else:
+                flash('No configurations were updated.', 'error')
+                
+        except Exception as e:      
+            flash(f'Error updating project configuration: {str(e)}', 'error')
+        
+        return redirect(url_for('project_settings', project_id=project_id))
+    
+    # Initialize project configs if they don't exist
+    initialize_project_configs(project_id)
+    
+    # Get all config items for display
+    config_items = get_project_configs_for_settings(project_id)
+    
+    return render_template('project_settings.html', 
+                         project=project, 
+                         config_items=config_items)
 
 # All routes are defined above. The following runs the app if executed directly.
 

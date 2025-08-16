@@ -1,3 +1,7 @@
+# Updating this table will not update the config database. 
+# This file is to make sure whenever we install this system first time,
+# config will be copied from here. Also, reset to default will set the value in the
+# config table from here.
 maintainer: Dhanoop Karunakaran
 debug: False
 sql_alchemy:
@@ -8,14 +12,14 @@ sql_alchemy:
     value: 'data.db'
     edit: True   # Editable
 type: 
-  - 'Token'
-  - 'Troubleshoot'
-  - 'Information'
-  - 'Other'
+  value: ['Token', 'Troubleshoot', 'Information', 'Other'] # These are the default types and project level types overrides it.
+  edit: True   # Editable - manage artifact types through settings
+  project_settings: True
+default_type: 
+  project_settings: True
+  value: 'Token'
+  edit: True   # Editable
 general:
-  default_type: 
-    value: 'Token'
-    edit: True   # Editable
 trim:
   name: 
     value: 15

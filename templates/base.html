@@ -444,21 +444,18 @@
                                style="border-radius: 0.75rem 0 0 0.75rem;">
                         <select name="type" class="form-select border-start-0 border-end-0" style="max-width: 120px; border-radius: 0;">
                             <option value="">All Types</option>
-                            {% for type_option in [
-                                {'id': '1', 'name': 'Token'},
-                                {'id': '2', 'name': 'Troubleshoot'},
-                                {'id': '3', 'name': 'Information'},
-                                {'id': '4', 'name': 'Other'}
-                            ] %}
-                            <option value="{{ type_option.id }}" {% if request.args.get('type') == type_option.id %}selected{% endif %}>
-                                {{ type_option.name }}
-                            </option>
-                            {% endfor %}
+                            {% if nav_types %}
+                                {% for type_option in nav_types %}
+                                <option value="{{ type_option.id }}" {% if request.args.get('type') == type_option.id %}selected{% endif %}>
+                                    {{ type_option.name }}
+                                </option>
+                                {% endfor %}
+                            {% endif %}
                         </select>
                         <select name="project" class="form-select border-start-0 border-end-0" style="max-width: 140px; border-radius: 0;">
                             <option value="">All Projects</option>
-                            {% if projects %}
-                                {% for project in projects %}
+                            {% if nav_projects %}
+                                {% for project in nav_projects %}
                                 <option value="{{ project.id }}" {% if request.args.get('project') == project.id|string %}selected{% endif %}>
                                     {% if project.is_default %}⭐ {% endif %}{{ project.name[:15] }}{% if project.name|length > 15 %}...{% endif %}
                                 </option>
@@ -599,6 +596,44 @@
                     const searchBtn = this.querySelector('button[type="submit"]');
                     searchBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
                 });
+                
+                // Handle dynamic type loading when project changes
+                const projectSelect = navSearchForm.querySelector('select[name="project"]');
+                const typeSelect = navSearchForm.querySelector('select[name="type"]');
+                
+                if (projectSelect && typeSelect) {
+                    projectSelect.addEventListener('change', function() {
+                        const selectedProject = this.value;
+                        const currentType = typeSelect.value;
+                        
+                        // Fetch types for the selected project
+                        const url = new URL(window.location.origin + '/get_project_types');
+                        if (selectedProject) {
+                            url.searchParams.set('project', selectedProject);
+                        }
+                        
+                        fetch(url)
+                            .then(response => response.json())
+                            .then(data => {
+                                // Clear existing options except "All Types"
+                                typeSelect.innerHTML = '<option value="">All Types</option>';
+                                
+                                // Add new options
+                                data.types.forEach(type => {
+                                    const option = document.createElement('option');
+                                    option.value = type.id;
+                                    option.textContent = type.name;
+                                    if (type.id === currentType) {
+                                        option.selected = true;
+                                    }
+                                    typeSelect.appendChild(option);
+                                });
+                            })
+                            .catch(error => {
+                                console.error('Error fetching types:', error);
+                            });
+                    });
+                }
             }
         });
         

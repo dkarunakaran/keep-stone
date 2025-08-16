@@ -10,7 +10,6 @@ sys.path.append(parent_dir)
 # Need to import all model files to create table
 import models.artifact
 import models.base
-import models.type
 import models.config
 import models.project
 import models.user
@@ -29,20 +28,8 @@ def create_database(session=None, config=None):
     
     models.base.Base.metadata.create_all(models.base.engine)
 
-    Type = models.type.Type
-
-    # Insert Groups
-    all_types= session.query(Type).all()
-    if len(all_types) < 1 and config:
-        types = config.get('type', [])
-            
-        for name in types:
-            # Create a new group object
-            type = Type(name=name)
-            # Add the new group to the session
-            session.add(type)
-            # Commit the changes to the database
-            session.commit() 
+    # Types are now managed at project level via project_config table
+    # No need to insert global types
 
     initialize_config_table()
 
