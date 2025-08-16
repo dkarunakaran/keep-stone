@@ -146,6 +146,24 @@ def inject_navigation_context():
         'nav_projects': nav_projects
     }
 
+@app.context_processor
+def inject_user_stats():
+    """Inject user statistics for navigation display"""
+    if not current_user.is_authenticated:
+        return {'user_artifact_count': 0}
+    
+    try:
+        # Get count of artifacts accessible to the current user
+        accessible_project_ids = get_user_accessible_project_ids()
+        artifact_count = session.query(Artifact).filter(
+            Artifact.project_id.in_(accessible_project_ids),
+            Artifact.deleted == False
+        ).count()
+        
+        return {'user_artifact_count': artifact_count}
+    except Exception:
+        return {'user_artifact_count': 0}
+
 # Create markdown renderer
 markdowner = Markdown(extras=["tables", "fenced-code-blocks"])
 

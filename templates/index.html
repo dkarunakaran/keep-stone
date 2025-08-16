@@ -3,259 +3,249 @@
 {% block title %}KeepStone - Dashboard{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div class="d-flex align-items-center gap-3">
-        <h4 class="mb-0">
-            <i class="fas fa-archive me-2 text-primary"></i>Dashboard
-        </h4>        {% if type_filter or show_all %}
-            <div class="d-flex align-items-center gap-2">
-                {% if show_all %}
-                    <span class="badge bg-secondary">
-                        <i class="fas fa-list me-1"></i>All Types
-                    </span>
-                    <a href="{{ url_for('index') }}" class="btn btn-sm btn-light">
-                        <i class="fas fa-star me-1"></i>Back to Default
-                    </a>
-                {% elif type_filter %}
-                    {% set is_default_filter = (config.general and config.general.default_type and types_dict[type_filter|int] == config.general.default_type and not request.args.get('type')) %}
-                    <span class="badge {% if is_default_filter %}bg-success{% else %}bg-primary{% endif %}">
-                        {% if is_default_filter %}
-                            <i class="fas fa-star me-1"></i>Default: {{ types_dict[type_filter|int] }}
-                        {% else %}
-                            Type: {{ types_dict[type_filter|int] }}
-                        {% endif %}
-                    </span>
-                    {% if not is_default_filter %}
-                        <a href="{{ url_for('index') }}" class="btn btn-sm btn-light">
-                            <i class="fas fa-times me-1"></i>Clear Filter
-                        </a>
-                    {% else %}
-                        <a href="{{ url_for('index', type='all') }}" class="btn btn-sm btn-light">
-                            <i class="fas fa-list me-1"></i>Show All
-                        </a>
-                    {% endif %}
-                {% endif %}
-            </div>
-        {% endif %}
-    </div>
-    
-    <div class="d-flex gap-3 align-items-center">        
-        <!-- Type Filter -->
-        <form method="GET" class="d-flex align-items-center me-2">
-            <input type="hidden" name="project" value="{{ project_filter }}">
-            <select name="type" class="form-select form-select-sm" onchange="this.form.submit()" style="min-width: 150px;">
-                <option value="all" {% if show_all %}selected{% endif %}>All Types</option>
-                {% for type in types %}
-                <option value="{{ type.id }}" {% if type_filter == type.id|string %}selected{% endif %}>
-                    {% if config.general and config.general.default_type == type.name and not request.args.get('type') and not show_all %}
-                        ⭐ {{ type.name }} (Default)
-                    {% else %}
-                        {{ type.name }}
-                    {% endif %}
-                </option>
-                {% endfor %}
-            </select>
-        </form>
-        
-        <!-- Project Filter -->
-        <form method="GET" class="d-flex align-items-center">
-            <input type="hidden" name="type" value="{{ type_filter }}">
-            <select name="project" class="form-select form-select-sm" onchange="this.form.submit()" style="min-width: 160px;">
-                <option value="all" {% if project_filter == 'all' %}selected{% endif %}>All Projects</option>
-                {% if default_project %}
-                <option value="default" {% if project_filter == 'default' or not project_filter %}selected{% endif %}>
-                    ⭐ {{ default_project.name }}
-                </option>
-                {% endif %}
-                {% for project in projects %}
-                    {% if not project.is_default and (not default_project or project.id != default_project.id) %}
-                    <option value="{{ project.id }}" {% if project_filter == project.id|string %}selected{% endif %}>
-                        {{ project.name }}
-                    </option>
-                    {% endif %}
-                {% endfor %}
-            </select>
-        </form>
-        
-        <a href="{{ url_for('add_artifact') }}" class="btn btn-primary">
-            <i class="fas fa-plus me-2"></i>New Artifact
-        </a>
-    </div>
-</div>
-
-<div class="row g-3">
-    {% if artifacts %}
-        {% for artifact in artifacts %}
-            {% set unique_id = 'artifact-' ~ artifact.id %}
-            {% set type_name = types_dict[artifact.type_id] %}
-            
-            {# Set card classes and status based on type #}
-            {% if type_name == 'Token' and artifact.expiry_date is not none%}
-                {% set days_until_expiry = (artifact.expiry_date - today).days %}
-                {% if artifact.is_expired() %}
-                    {% set card_class = "token-expired" %}
-                    {% set status_badge = "bg-danger" %}
-                    {% set status_text = "Expired" %}
-                    {% set status_icon = "fas fa-times-circle" %}
-                {% elif days_until_expiry <= 14 %}
-                    {% set card_class = "token-warning" %}
-                    {% set status_badge = "bg-warning" %}
-                    {% set status_text = "Expiring" %}
-                    {% set status_icon = "fas fa-exclamation-triangle" %}
-                {% else %}
-                    {% set card_class = "token-active" %}
-                    {% set status_badge = "bg-success" %}
-                    {% set status_text = "Active" %}
-                    {% set status_icon = "fas fa-check-circle" %}
-                {% endif %}
-                {% set type_icon = "fas fa-key" %}
-            {% elif type_name == 'Troubleshoot' %}
-                {% set card_class = "troubleshoot-card" %}
-                {% set type_icon = "fas fa-wrench" %}
-            {% elif type_name == 'Information' %}
-                {% set card_class = "information-card" %}
-                {% set type_icon = "fas fa-info-circle" %}
-            {% elif type_name == 'Other' %}
-                {% set card_class = "other-card" %}
-                {% set type_icon = "fas fa-folder" %}
-            {% endif %}
-
-            <div class="col-sm-6 col-md-4 col-lg-3">
-                <div id="{{ unique_id }}" class="artifact-card {{ card_class }}" 
-                     onclick="navigateToArtifact(event, '{{ url_for('artifact_detail', artifact_id=artifact.id) }}')">
-                    <div class="p-3">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <h6 class="mb-0 fw-semibold text-dark" style="max-width: 300px;">
-                                <i class="{{ type_icon }} text-primary me-2"></i>
-                                {% if type_name == 'Token' %}
-                                    {{ artifact.name[:config.trim.name] }}{% if artifact.name|length > config.trim.name %}...{% endif %}
-                                {% else %}
-                                    {{ artifact.name[:config.trim.name+config.trim.extra] }}{% if artifact.name|length > config.trim.name+config.trim.extra %}...{% endif %}
-                                {% endif %}
-
-                            </h6>
-                            {% if type_name == 'Token' %}
-                                <span class="badge {{ status_badge }}">
-                                    <i class="{{ status_icon }} me-1"></i>{{ status_text }}
-                                </span>
-                            {% endif %}
-                        </div>
-
-                        <div class="mb-2">
-                            <span class="badge bg-dark">{{ type_name }}</span>
-                        </div>
-
-                        <p class="text-muted small mb-2" style="height: 3em; overflow: hidden;">
-                            {{ artifact.content[:config.trim.content] }}{% if artifact.content|length > config.trim.content %}...{% endif %}
-                        </p>
-
-                        <div class="d-flex justify-content-between align-items-center">
-                            <small class="text-muted">
-                                {% if type_name == 'Token' and artifact.expiry_date is not none%}
-                                    <i class="far fa-calendar me-1"></i>
-                                    {{ artifact.expiry_date.strftime('%b %d, %Y') }}
-                                    {% if days_until_expiry <= 14 and not artifact.is_expired() %}
-                                        <span class="text-warning" style="font-size: 0.75rem;">({{ days_until_expiry }}d left)</span>
-                                    {% elif artifact.is_expired() %}
-                                        <span class="text-danger" style="font-size: 0.75rem;">(Expired)</span>
-                                    {% endif %}
-                                {% else %}
-                                    <i class="far fa-clock me-1"></i>
-                                    {{ artifact.created_at.strftime('%b %d, %Y') }}
-                                {% endif %}
-                            </small>
-                            <div class="btn-group action-buttons">
-                                <button type="button" class="btn btn-icon btn-light" title="Export PDF"
-                                    onclick="handleAction(event, '{{ url_for('export_artifact_pdf', artifact_id=artifact.id) }}')">
-                                    <i class="fas fa-file-pdf"></i>
-                                </button>
-                                <button type="button" class="btn btn-icon btn-light" title="Edit"
-                                        onclick="handleAction(event, '{{ url_for('update_artifact', artifact_id=artifact.id) }}')">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button type="button" class="btn btn-icon btn-light" title="Delete"
-                                        onclick="handleDelete(event, '{{ url_for('delete_artifact', artifact_id=artifact.id) }}')">
-                                    <i class="fas fa-trash text-danger"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+<div class="container-fluid px-0">
+    <!-- Header Section -->
+    <div class="settings-header mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-3">
+                <div>
+                    <h2 class="settings-title mb-2">
+                        <i class="fas fa-archive me-3 text-primary"></i>Dashboard
+                    </h2>
+                    <p class="settings-subtitle mb-0">Manage your artifacts and projects</p>
                 </div>
+                
+                {% if type_filter or show_all %}
+                    <div class="d-flex align-items-center gap-2 ms-4">
+                        {% if show_all %}
+                            <span class="badge bg-secondary">
+                                <i class="fas fa-list me-1"></i>All Types
+                            </span>
+                            <a href="{{ url_for('index') }}" class="btn btn-sm btn-outline-light">
+                                <i class="fas fa-star me-1"></i>Back to Default
+                            </a>
+                        {% elif type_filter %}
+                            {% set is_default_filter = (config.general and config.general.default_type and types_dict[type_filter|int] == config.general.default_type and not request.args.get('type')) %}
+                            <span class="badge {% if is_default_filter %}bg-success{% else %}bg-primary{% endif %}">
+                                {% if is_default_filter %}
+                                    <i class="fas fa-star me-1"></i>Default: {{ types_dict[type_filter|int] }}
+                                {% else %}
+                                    Type: {{ types_dict[type_filter|int] }}
+                                {% endif %}
+                            </span>
+                            {% if not is_default_filter %}
+                                <a href="{{ url_for('index') }}" class="btn btn-sm btn-outline-light">
+                                    <i class="fas fa-times me-1"></i>Clear Filter
+                                </a>
+                            {% else %}
+                                <a href="{{ url_for('index', type='all') }}" class="btn btn-sm btn-outline-light">
+                                    <i class="fas fa-list me-1"></i>Show All
+                                </a>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                {% endif %}
             </div>
-        {% endfor %}
-    {% else %}
-        <div class="col-12">
-            <div class="text-center py-5">
-                <div class="display-1 text-muted mb-4">
-                    <i class="fas fa-box-open"></i>
-                </div>                <h3 class="text-muted">No Artifacts Found</h3>
-                <p class="text-muted mb-4">
-                    {% if type_filter %}
-                        No artifacts found in the selected category.
-                    {% else %}
-                        Get started by adding your first artifact.
-                    {% endif %}
-                </p>
-                <a href="{{ url_for('add_artifact') }}" class="btn btn-primary">
-                    <i class="fas fa-plus me-2"></i>Add First Artifact
-                </a>
+            
+            <a href="{{ url_for('add_artifact') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>New Artifact
+            </a>
+        </div>
+    </div>
+
+    <!-- Filter Controls -->
+    <div class="setting-card mb-4">
+        <div class="setting-header">
+            <h3 class="setting-label mb-0">
+                <i class="fas fa-filter me-2 text-primary"></i>Filter Options
+            </h3>
+        </div>
+        <div class="setting-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <!-- Type Filter -->
+                    <form method="GET" class="d-flex align-items-center">
+                        <input type="hidden" name="project" value="{{ project_filter }}">
+                        <label for="type-filter" class="form-label me-2 mb-0 fw-medium" style="min-width: 80px;">Type:</label>
+                        <select name="type" id="type-filter" class="form-select" onchange="this.form.submit()">
+                            <option value="all" {% if show_all %}selected{% endif %}>All Types</option>
+                            {% for type in types %}
+                            <option value="{{ type.id }}" {% if type_filter == type.id|string %}selected{% endif %}>
+                                {% if config.general and config.general.default_type == type.name and not request.args.get('type') and not show_all %}
+                                    ⭐ {{ type.name }} (Default)
+                                {% else %}
+                                    {{ type.name }}
+                                {% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                </div>
+                
+                <div class="col-md-6">
+                    <!-- Project Filter -->
+                    <form method="GET" class="d-flex align-items-center">
+                        <input type="hidden" name="type" value="{{ type_filter }}">
+                        <label for="project-filter" class="form-label me-2 mb-0 fw-medium" style="min-width: 80px;">Project:</label>
+                        <select name="project" id="project-filter" class="form-select" onchange="this.form.submit()">
+                            <option value="all" {% if project_filter == 'all' %}selected{% endif %}>All Projects</option>
+                            {% if default_project %}
+                            <option value="default" {% if project_filter == 'default' or not project_filter %}selected{% endif %}>
+                                ⭐ {{ default_project.name }}
+                            </option>
+                            {% endif %}
+                            {% for project in projects %}
+                                {% if not project.is_default and (not default_project or project.id != default_project.id) %}
+                                <option value="{{ project.id }}" {% if project_filter == project.id|string %}selected{% endif %}>
+                                    {{ project.name }}
+                                </option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    </form>
+                </div>
             </div>
         </div>
-    {% endif %}
-</div>
+    </div>
 
-<div class="card bg-light mt-4">
-    <div class="card-body">
-        <div class="row">
-            <div class="col-md-6">
-                <h6 class="card-title d-flex align-items-center mb-3">
-                    <i class="fas fa-key text-primary me-2"></i>Token Status Legend
-                </h6>
-                <div class="row g-2">
-                    <div class="col-md-12">
-                        <div class="d-flex align-items-center mb-2">
-                            <span class="badge bg-success me-2">Active</span>
-                            <small>More than 14 days remaining</small>
+    <!-- Artifacts Grid -->
+    <div class="setting-card">
+        <div class="setting-header">
+            <h3 class="setting-label mb-0">
+                <span>
+                    <i class="fas fa-box me-2 text-primary"></i>Your Artifacts
+                    {% if artifacts %}
+                        <span class="badge bg-primary ms-2">{{ artifacts|length }}</span>
+                    {% endif %}
+                </span>
+                {% if artifacts|length > 6 %}
+                    <small class="text-muted">Showing {{ artifacts|length }} artifacts</small>
+                {% endif %}
+            </h3>
+        </div>
+        <div class="setting-body">
+            {% if artifacts %}
+                <div class="dashboard-grid">
+                    {% for artifact in artifacts %}
+                        {% set unique_id = 'artifact-' ~ artifact.id %}
+                        {% set type_name = types_dict[artifact.type_id] %}
+                        
+                        {# Set card classes and status based on type #}
+                        {% if type_name == 'Token' and artifact.expiry_date is not none%}
+                            {% set days_until_expiry = (artifact.expiry_date - today).days %}
+                            {% if artifact.is_expired() %}
+                                {% set card_class = "token-expired" %}
+                                {% set status_badge = "bg-danger" %}
+                                {% set status_text = "Expired" %}
+                                {% set status_icon = "fas fa-times-circle" %}
+                            {% elif days_until_expiry <= 14 %}
+                                {% set card_class = "token-warning" %}
+                                {% set status_badge = "bg-warning" %}
+                                {% set status_text = "Expiring" %}
+                                {% set status_icon = "fas fa-exclamation-triangle" %}
+                            {% else %}
+                                {% set card_class = "token-active" %}
+                                {% set status_badge = "bg-success" %}
+                                {% set status_text = "Active" %}
+                                {% set status_icon = "fas fa-check-circle" %}
+                            {% endif %}
+                            {% set type_icon = "fas fa-key" %}
+                        {% elif type_name == 'Troubleshoot' %}
+                            {% set card_class = "troubleshoot-card" %}
+                            {% set type_icon = "fas fa-wrench" %}
+                        {% elif type_name == 'Information' %}
+                            {% set card_class = "information-card" %}
+                            {% set type_icon = "fas fa-info-circle" %}
+                        {% elif type_name == 'Other' %}
+                            {% set card_class = "other-card" %}
+                            {% set type_icon = "fas fa-folder" %}
+                        {% else %}
+                            {% set card_class = "other-card" %}
+                            {% set type_icon = "fas fa-file" %}
+                        {% endif %}
+
+                        <div id="{{ unique_id }}" class="artifact-card {{ card_class }}" 
+                             onclick="navigateToArtifact(event, '{{ url_for('artifact_detail', artifact_id=artifact.id) }}')">
+                            <div class="p-3">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h6 class="mb-0 fw-semibold text-dark" style="max-width: 300px;">
+                                        <i class="{{ type_icon }} text-primary me-2"></i>
+                                        {% if type_name == 'Token' %}
+                                            {% set name_limit = config.trim.name if config and config.trim and config.trim.name else 30 %}
+                                            {{ artifact.name[:name_limit] }}{% if artifact.name|length > name_limit %}...{% endif %}
+                                        {% else %}
+                                            {% set name_limit = (config.trim.name + config.trim.extra) if config and config.trim and config.trim.name and config.trim.extra else 35 %}
+                                            {{ artifact.name[:name_limit] }}{% if artifact.name|length > name_limit %}...{% endif %}
+                                        {% endif %}
+                                    </h6>
+                                    {% if type_name == 'Token' %}
+                                        <span class="badge {{ status_badge }}">
+                                            <i class="{{ status_icon }} me-1"></i>{{ status_text }}
+                                        </span>
+                                    {% endif %}
+                                </div>
+
+                                <div class="mb-2">
+                                    <span class="badge bg-dark">{{ type_name }}</span>
+                                </div>
+
+                                <p class="text-muted small mb-2" style="height: 3em; overflow: hidden;">
+                                    {% set content_limit = config.trim.content if config and config.trim and config.trim.content else 120 %}
+                                    {{ artifact.content[:content_limit] }}{% if artifact.content|length > content_limit %}...{% endif %}
+                                </p>
+
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted">
+                                        {% if type_name == 'Token' and artifact.expiry_date is not none%}
+                                            <i class="far fa-calendar me-1"></i>
+                                            {{ artifact.expiry_date.strftime('%b %d, %Y') }}
+                                            {% if days_until_expiry <= 14 and not artifact.is_expired() %}
+                                                <span class="text-warning" style="font-size: 0.75rem;">({{ days_until_expiry }}d left)</span>
+                                            {% elif artifact.is_expired() %}
+                                                <span class="text-danger" style="font-size: 0.75rem;">(Expired)</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <i class="far fa-clock me-1"></i>
+                                            {{ artifact.created_at.strftime('%b %d, %Y') }}
+                                        {% endif %}
+                                    </small>
+                                    <div class="btn-group action-buttons">
+                                        <button type="button" class="btn btn-icon btn-light" title="Export PDF"
+                                            onclick="handleAction(event, '{{ url_for('export_artifact_pdf', artifact_id=artifact.id) }}')">
+                                            <i class="fas fa-file-pdf"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-icon btn-light" title="Edit"
+                                                onclick="handleAction(event, '{{ url_for('update_artifact', artifact_id=artifact.id) }}')">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-icon btn-light" title="Delete"
+                                                onclick="handleDelete(event, '{{ url_for('delete_artifact', artifact_id=artifact.id) }}')">
+                                            <i class="fas fa-trash text-danger"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="d-flex align-items-center mb-2">
-                            <span class="badge bg-warning me-2">Expiring</span>
-                            <small>14 days or less remaining</small>
-                        </div>
-                        <div class="d-flex align-items-center">
-                            <span class="badge bg-danger me-2">Expired</span>
-                            <small>Past expiry date</small>
-                        </div>
-                    </div>
+                    {% endfor %}
                 </div>
-            </div>
-            <div class="col-md-6">
-                <h6 class="card-title d-flex align-items-center mb-3">
-                    <i class="fas fa-shapes text-primary me-2"></i>Artifact Types
-                </h6>
-                <div class="row g-2">
-                    <div class="col-md-6">
-                        <div class="d-flex align-items-center mb-2">
-                            <i class="fas fa-key text-primary me-2"></i>
-                            <small>Token</small>
-                        </div>
-                        <div class="d-flex align-items-center mb-2">
-                            <i class="fas fa-wrench text-orange-600 me-2"></i>
-                            <small>Troubleshoot</small>
-                        </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <div class="display-1 text-muted mb-4">
+                        <i class="fas fa-box-open"></i>
                     </div>
-                    <div class="col-md-6">
-                        <div class="d-flex align-items-center mb-2">
-                            <i class="fas fa-info-circle text-blue-600 me-2"></i>
-                            <small>Information</small>
-                        </div>
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-folder text-gray-600 me-2"></i>
-                            <small>Other</small>
-                        </div>
-                    </div>
+                    <h3 class="text-muted">No Artifacts Found</h3>
+                    <p class="text-muted mb-4">
+                        {% if type_filter %}
+                            No artifacts found in the selected category.
+                        {% else %}
+                            Get started by adding your first artifact.
+                        {% endif %}
+                    </p>
+                    <a href="{{ url_for('add_artifact') }}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Add First Artifact
+                    </a>
                 </div>
-            </div>
-            </div>
+            {% endif %}
         </div>
     </div>
 </div>
