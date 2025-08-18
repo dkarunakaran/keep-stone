@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, make_response, abort
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, make_response, abort, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from datetime import datetime, date
@@ -9,7 +9,6 @@ from sqlalchemy.orm import sessionmaker
 import base64
 from werkzeug.utils import secure_filename
 from markdown2 import Markdown
-from flask import send_from_directory
 from utility import save_image, delete_image
 from dotenv import load_dotenv
 from utils.config_utils import load_config, update_config, get_config_for_settings, get_section_title, get_section_icon, reset_config_to_defaults
@@ -25,15 +24,18 @@ from reportlab.lib.enums import TA_JUSTIFY, TA_CENTER, TA_LEFT
 from reportlab.platypus.flowables import HRFlowable
 import io
 import os
-import markdown
 import re
 from PIL import Image as PILImage
 
 from datetime import datetime
-
 import sys
+
+# Path setup
 parent_dir = ".."
 sys.path.append(parent_dir)
+sys.path.append('/app')
+
+# Import models
 import models.base
 import models.artifact
 import models.config
@@ -41,10 +43,6 @@ import models.project
 import models.project_member
 import models.project_config
 import models.user
-
-# Fix for template rendering
-import sys
-sys.path.append('/app')
 
 load_dotenv()
 
@@ -1036,8 +1034,8 @@ def clean_markdown_for_pdf(text):
     if not text:
         return ""
     
-    # Convert markdown to HTML first
-    html = markdown.markdown(text, extensions=['tables', 'fenced_code'])
+    # Convert markdown to HTML first using markdowner
+    html = markdowner.convert(text)
     
     # Clean HTML tags for reportlab
     html = re.sub(r'<h1>(.*?)</h1>', r'<para fontSize="18" spaceAfter="12"><b>\1</b></para>', html)
@@ -1635,12 +1633,20 @@ def delete_project(project_id):
 @active_user_required
 def edit_project(project_id):
     """Edit a project"""
+    print(f"EDIT_PROJECT: Route called with method {request.method} for project {project_id}")
+    
     project = session.query(Project).get(project_id)
     if not project:
         flash('Project not found', 'error')
         return redirect(url_for('projects'))
     
+    # Check if user has access to this project
+    if not user_has_project_access(project_id):
+        flash('You do not have permission to edit this project', 'error')
+        return redirect(url_for('projects'))
+    
     if request.method == 'GET':
+        print(f"EDIT_PROJECT: Serving GET request for project {project.name}")
         # Get projects list and artifact count for the template
         projects = get_all_projects()
         artifact_count = session.query(Artifact).filter(
@@ -1654,9 +1660,13 @@ def edit_project(project_id):
                              projects=projects,
                              project_artifacts=project_artifacts)
     
+    # Handle POST request
+    print(f"EDIT_PROJECT: Processing POST request with form data: {dict(request.form)}")
     try:
-        name = request.form['name'].strip()
+        name = request.form.get('name', '').strip()
         description = request.form.get('description', '').strip()
+        
+        print(f"EDIT_PROJECT: Extracted name='{name}', description='{description}'")
         
         if not name:
             flash('Project name is required', 'error')
@@ -1694,13 +1704,18 @@ def edit_project(project_id):
         # Update project
         project.name = name
         project.description = description if description else None
-        session.commit()
+        
+        # Ensure we have a fresh session and commit properly
+        session.flush()  # Flush changes to database
+        session.commit()  # Commit the transaction
+        session.refresh(project)  # Refresh the object from the database
         
         flash(f'Project "{name}" updated successfully!', 'success')
         return redirect(url_for('projects'))
+        
     except Exception as e:
-        flash(f'Error updating project: {str(e)}', 'error')
         session.rollback()
+        flash(f'Error updating project: {str(e)}', 'error')
         # Get projects list and artifact count for the template
         projects = get_all_projects()
         artifact_count = session.query(Artifact).filter(
