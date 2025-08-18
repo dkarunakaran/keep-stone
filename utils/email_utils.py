@@ -5,7 +5,6 @@ from datetime import date, timedelta
 import os
 from dotenv import load_dotenv
 from models.artifact import Artifact
-from models.type import Type
 import logging
 import sys
 
@@ -70,16 +69,11 @@ def check_expiring_tokens(session, config):
     today = date.today()
     notification_days = config['email'].get('notification_days', 14)
     
-    # Get token type ID
-    token_type = session.query(Type).filter(Type.name == 'Token').first()
-    if not token_type:
-        return
-    
-    # Query for tokens that will expire soon
+    # Query for tokens that will expire soon (using type_name field)
     expiring_tokens = (
         session.query(Artifact)
         .filter(
-            Artifact.type_id == token_type.id,
+            Artifact.type_name == 'Token',
             Artifact.expiry_date <= today + timedelta(days=notification_days),
             Artifact.expiry_date > today
         )

@@ -1,0 +1,607 @@
+{% extends "base.html" %}
+
+{% block title %}Project Members - {{ project.name }} - KeepStone{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <!-- Header Section -->
+    <div class="settings-header mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2 class="settings-title mb-2">
+                    <i class="fas fa-users me-3 text-primary"></i>Project Members
+                </h2>
+                <p class="settings-subtitle mb-0">Manage members for <strong>"{{ project.name }}"</strong></p>
+            </div>
+            <a href="{{ url_for('projects') }}" class="btn btn-outline-light">
+                <i class="fas fa-arrow-left me-2"></i>Back to Projects
+            </a>
+        </div>
+    </div>
+
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb bg-transparent p-0">
+            <li class="breadcrumb-item">
+                <a href="{{ url_for('index') }}" class="text-decoration-none breadcrumb-link">
+                    <i class="fas fa-home me-1"></i>Dashboard
+                </a>
+            </li>
+            <li class="breadcrumb-item">
+                <a href="{{ url_for('projects') }}" class="text-decoration-none breadcrumb-link">
+                    <i class="fas fa-folder me-1"></i>Projects Management
+                </a>
+            </li>
+            <li class="breadcrumb-item active text-muted">{{ project.name }} Members</li>
+        </ol>
+    </nav>
+
+    <!-- Statistics -->
+    <div class="stats-container mb-4">
+        <div class="stat-card">
+            <div class="stat-number">{{ member_data|length }}</div>
+            <div class="stat-label">Total Members</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ member_data|selectattr('membership.role', 'equalto', 'owner')|list|length }}</div>
+            <div class="stat-label">Owners</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ member_data|selectattr('membership.role', 'equalto', 'member')|list|length }}</div>
+            <div class="stat-label">Members</div>
+        </div>
+    </div>
+
+    <div class="members-container">
+        <!-- Add New Member Form (for owners and admins) -->
+        {% if (is_owner or is_admin) and available_users %}
+        <div class="member-card">
+            <div class="member-header">
+                <label class="member-label">
+                    <i class="fas fa-user-plus me-2"></i>Add New Member
+                </label>
+                <div class="member-description">
+                    <i class="fas fa-info-circle me-1"></i>Add a new member to this project
+                </div>
+            </div>
+            
+            <div class="member-input-container">
+                <form method="POST" action="{{ url_for('add_project_member', project_id=project.id) }}" class="row g-3">
+                    <div class="col-md-6">
+                        <select name="user_id" class="form-select member-input" required>
+                            <option value="">Choose a user...</option>
+                            {% for user in available_users %}
+                            <option value="{{ user.id }}">{{ user.full_name }} (@{{ user.username }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select name="role" class="form-select member-input">
+                            <option value="member">Member</option>
+                            {% if is_owner or is_admin %}
+                            <option value="owner">Owner</option>
+                            {% endif %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-plus me-2"></i>Add Member
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Members List -->
+        {% if member_data %}
+        {% for item in member_data %}
+        <div class="member-card">
+            <div class="member-header">
+                <label class="member-label">
+                    {{ item.user.full_name }}
+                    <span class="member-badge role-{{ item.membership.role }}">
+                        {% if item.membership.role == 'owner' %}
+                        <i class="fas fa-crown me-1"></i>Owner
+                        {% else %}
+                        <i class="fas fa-user me-1"></i>Member
+                        {% endif %}
+                    </span>
+                </label>
+                <div class="member-description">
+                    <i class="fas fa-user me-1"></i>@{{ item.user.username }}
+                    <span class="ms-2">
+                        <i class="fas fa-envelope me-1"></i>{{ item.user.email }}
+                    </span>
+                    {% if item.added_by %}
+                    <span class="ms-2">
+                        <i class="fas fa-plus me-1"></i>Added by {{ item.added_by.full_name }}
+                    </span>
+                    {% endif %}
+                    <span class="ms-2">
+                        <i class="fas fa-calendar me-1"></i>{{ item.membership.added_at.strftime('%B %d, %Y') }}
+                    </span>
+                </div>
+            </div>
+            
+            {% if item.can_remove %}
+            <div class="member-input-container">
+                <form method="POST" action="{{ url_for('remove_project_member', project_id=project.id, user_id=item.user.id) }}" 
+                      onsubmit="return confirm('Are you sure you want to remove {{ item.user.full_name }} from this project?')">
+                    <button type="submit" class="btn btn-danger">
+                        {% if item.user.id == current_user.id %}
+                        <i class="fas fa-sign-out-alt me-1"></i>Leave Project
+                        {% else %}
+                        <i class="fas fa-user-minus me-1"></i>Remove
+                        {% endif %}
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-state-content">
+                <div class="empty-state-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <h3 class="empty-state-title">No Members Found</h3>
+                <p class="empty-state-text">This project doesn't have any members yet.</p>
+                <a href="{{ url_for('projects') }}" class="btn btn-primary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Projects
+                </a>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if not available_users and (is_owner or is_admin) %}
+        <div class="member-card">
+            <div class="member-header">
+                <label class="member-label">
+                    <i class="fas fa-info-circle me-2"></i>All Users Added
+                </label>
+                <div class="member-description">
+                    All users have been added to this project. No additional users are available to add.
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+/* Header Styling */
+.settings-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 1.5rem;
+    border-radius: 1rem;
+    color: white;
+    box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
+}
+
+.settings-title {
+    font-weight: 700;
+    font-size: 1.5rem;
+    margin: 0;
+}
+
+.settings-subtitle {
+    font-size: 1rem;
+    opacity: 0.9;
+}
+
+/* Breadcrumb */
+.breadcrumb-link {
+    color: #6b7280;
+    transition: color 0.2s ease;
+}
+
+.breadcrumb-link:hover {
+    color: var(--primary-color);
+}
+
+/* Statistics Container */
+.stats-container {
+    display: flex;
+    gap: 1rem;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    text-align: center;
+    border: 1px solid #f1f5f9;
+    flex: 1;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+.stat-number {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #667eea;
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+/* Members Container */
+.members-container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+/* Member Cards */
+.member-card {
+    background: white;
+    border-radius: 1rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    border: 1px solid #f1f5f9;
+    margin-bottom: 1.5rem;
+    padding: 1.5rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.member-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+.member-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.member-header {
+    margin-bottom: 1rem;
+}
+
+.member-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 0.5rem;
+    font-size: 1.1rem;
+    line-height: 1.4;
+}
+
+.member-badge {
+    background: #fef3c7;
+    color: #92400e;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    white-space: nowrap;
+    margin-left: 1rem;
+}
+
+.role-owner {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.role-member {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.member-description {
+    color: #6b7280;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-top: 0.25rem;
+}
+
+/* Member Input Container */
+.member-input-container {
+    width: 100%;
+}
+
+.member-input {
+    border: 2px solid #e5e7eb;
+    border-radius: 0.75rem;
+    padding: 0.875rem 1.25rem;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    background: #fafafa;
+    width: 100%;
+}
+
+.member-input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+    outline: none;
+    background: white;
+}
+
+.member-input:disabled,
+.member-input[readonly] {
+    background: #f9fafb;
+    color: #6b7280;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* Button Styling */
+.btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    border: none;
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+}
+
+.btn-danger:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4);
+}
+
+.btn-outline-light {
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: white;
+}
+
+.btn-outline-light:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.5);
+    color: white;
+}
+
+/* Empty State */
+.empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40vh;
+}
+
+.empty-state-content {
+    text-align: center;
+    max-width: 400px;
+}
+
+.empty-state-icon {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    color: #9ca3af;
+    font-size: 2rem;
+}
+
+.empty-state-title {
+    color: #374151;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.empty-state-text {
+    color: #6b7280;
+    margin-bottom: 2rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .settings-header {
+        padding: 1rem;
+        text-align: center;
+    }
+    
+    .settings-title {
+        font-size: 1.25rem;
+    }
+    
+    .members-container {
+        padding: 0 1rem;
+    }
+    
+    .stats-container {
+        flex-direction: column;
+        padding: 0 1rem;
+    }
+    
+    .member-card {
+        padding: 1.25rem;
+    }
+    
+    .member-label {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .member-badge {
+        margin-left: 0;
+    }
+}
+
+@media (max-width: 480px) {
+    .member-card {
+        margin-bottom: 1rem;
+        padding: 1rem;
+    }
+}
+
+/* Animation */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.member-card {
+    animation: fadeInUp 0.4s ease-out;
+}
+
+.member-card:nth-child(1) { animation-delay: 0s; }
+.member-card:nth-child(2) { animation-delay: 0.1s; }
+.member-card:nth-child(3) { animation-delay: 0.2s; }
+.member-card:nth-child(4) { animation-delay: 0.3s; }
+.member-card:nth-child(5) { animation-delay: 0.4s; }
+.member-card:nth-child(n+6) { animation-delay: 0.5s; }
+
+/* Focus States */
+.member-card:focus-within {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(102, 126, 234, 0.15);
+}
+</style>
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Enhanced input focus effects
+    const inputs = document.querySelectorAll('.member-input');
+    inputs.forEach(function(input) {
+        input.addEventListener('focus', function() {
+            this.closest('.member-card').classList.add('focused');
+        });
+        
+        input.addEventListener('blur', function() {
+            this.closest('.member-card').classList.remove('focused');
+        });
+    });
+
+    // Form validation
+    const forms = document.querySelectorAll('form');
+    forms.forEach(function(form) {
+        form.addEventListener('submit', function(e) {
+            const submitBtn = form.querySelector('button[type="submit"]');
+            
+            // Add loading state
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                const originalText = submitBtn.innerHTML;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
+                
+                // Reset after 3 seconds if form doesn't submit
+                setTimeout(() => {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                }, 3000);
+            }
+        });
+    });
+
+    // Simple notification system
+    function showNotification(message, type = 'info') {
+        const existing = document.querySelector('.notification');
+        if (existing) {
+            existing.remove();
+        }
+
+        const notification = document.createElement('div');
+        notification.className = `notification alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show`;
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1050;
+            min-width: 300px;
+            animation: slideInRight 0.3s ease-out;
+        `;
+        
+        notification.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, 5000);
+    }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        // Escape to go back
+        if (e.key === 'Escape') {
+            const backBtn = document.querySelector('a[href*="projects"]');
+            if (backBtn && confirm('Are you sure you want to go back?')) {
+                window.location.href = backBtn.href;
+            }
+        }
+    });
+});
+
+// CSS for animations
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideInRight {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    .member-card.focused {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 32px rgba(102, 126, 234, 0.15);
+        transition: all 0.2s ease;
+    }
+    
+    .member-card.focused .member-input {
+        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15);
+    }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}

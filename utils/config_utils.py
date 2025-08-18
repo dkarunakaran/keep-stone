@@ -15,21 +15,19 @@ def load_config_from_yaml():
         return {}
 
 def flatten_dict(d, parent_key='', sep='.'):
-    """Flatten nested dictionary, keeping track of edit flags"""
+    """Flatten nested dictionary, handling new structure with value/edit properties"""
     items = []
     for k, v in d.items():
         new_key = f"{parent_key}{sep}{k}" if parent_key else k
         if isinstance(v, dict):
-            # Check if this dict has an 'edit' key
-            if 'edit' in v:
-                # This is a config section with edit flag
+            # Check if this is a config item with value/edit structure
+            if 'value' in v and 'edit' in v:
+                # This is a config item with individual edit flag
                 edit_flag = v.get('edit', False)
-                for sub_k, sub_v in v.items():
-                    if sub_k != 'edit':  # Skip the edit flag itself
-                        sub_key = f"{new_key}{sep}{sub_k}"
-                        items.append((sub_key, sub_v, edit_flag))
+                value = v.get('value')
+                items.append((new_key, value, edit_flag))
             else:
-                # Regular nested dict
+                # Regular nested dict - recurse
                 items.extend(flatten_dict(v, new_key, sep=sep))
         else:
             # Simple value at root level - no edit flag means not editable
@@ -76,7 +74,18 @@ def generate_config_description(key):
         'email.timezone': 'Timezone for date calculations',
         
         # General settings
-        'general.default_type': 'Default artifact type to pre-select when creating new artifacts',
+        'default_type': 'Default artifact type to pre-select when creating new artifacts',
+        
+        # Types
+        'type': 'Available artifact types (comma-separated list)',
+        
+        # Backup settings
+        'backup.enabled': 'Enable or disable automatic weekly backups',
+        'backup.backup_path': 'Directory path where backup files are stored',
+        'backup.keep_backups': 'Number of backup files to retain (older files are deleted)',
+        'backup.backup_database': 'Include SQLite database in backups',
+        'backup.backup_images': 'Include uploaded images in backups (can be large)',
+        'backup.backup_day': 'Day of the week when automatic backups are performed',
     }
     
     return descriptions.get(key, f'Configuration setting for {key.replace(".", " ").title()}')
@@ -93,26 +102,31 @@ def initialize_config_table():
     """Initialize config table with editable data from YAML file"""
     session = Session()
     try:
-        # Check if config table has any data
-        existing_configs = session.query(Config).count()
+        # Load from YAML and get all editable configs
+        yaml_config = load_config_from_yaml()
+        flat_config = flatten_dict(yaml_config)
         
-        if existing_configs == 0:
-            # Load from YAML and populate database
-            yaml_config = load_config_from_yaml()
-            flat_config = flatten_dict(yaml_config)
-            
-            for key, value, is_editable in flat_config:
-                # Only add to database if it's editable
-                if is_editable:
-                    config_item = Config(
-                        key=key,
-                        value=json.dumps(value) if isinstance(value, (list, dict)) else str(value),
-                        description=generate_config_description(key)
-                    )
-                    session.add(config_item)
-            
+        # Get existing config keys from database
+        existing_configs = session.query(Config.key).all()
+        existing_keys = {config.key for config in existing_configs}
+        
+        added_count = 0
+        for key, value, is_editable in flat_config:
+            # Only add to database if it's editable and not already exists
+            if is_editable and key not in existing_keys:
+                config_item = Config(
+                    key=key,
+                    value=json.dumps(value) if isinstance(value, (list, dict)) else str(value),
+                    description=generate_config_description(key)
+                )
+                session.add(config_item)
+                added_count += 1
+        
+        if added_count > 0:
             session.commit()
-            print(f"Config table initialized with {session.query(Config).count()} editable items")
+            print(f"Config table updated: added {added_count} new editable config items")
+        else:
+            print("Config table is up to date - no new items to add")
         
     except Exception as e:
         session.rollback()
@@ -149,12 +163,15 @@ def load_config():
         # Start with YAML config as base
         result_config = yaml_config.copy()
         
-        # Remove edit flags from result
+        # Remove edit flags and extract values from result
         def clean_edit_flags(d):
             if isinstance(d, dict):
                 cleaned = {}
                 for k, v in d.items():
-                    if k != 'edit':
+                    if isinstance(v, dict) and 'value' in v and 'edit' in v:
+                        # Extract just the value from value/edit structure
+                        cleaned[k] = v['value']
+                    elif k not in ['edit']:  # Skip old-style edit flags
                         cleaned[k] = clean_edit_flags(v)
                 return cleaned
             return d
@@ -183,7 +200,10 @@ def load_config():
             if isinstance(d, dict):
                 cleaned = {}
                 for k, v in d.items():
-                    if k != 'edit':
+                    if isinstance(v, dict) and 'value' in v and 'edit' in v:
+                        # Extract just the value from value/edit structure
+                        cleaned[k] = v['value']
+                    elif k not in ['edit']:  # Skip old-style edit flags
                         cleaned[k] = clean_edit_flags(v)
                 return cleaned
             return d
@@ -214,10 +234,40 @@ def get_config_for_settings():
     try:
         configs = session.query(Config).order_by(Config.key).all()
         
+        # Filter out project-related config items (these should not appear in system settings UI)
+        # Get project-level config keys to exclude from system settings
+        yaml_config = load_config_from_yaml()
+        flat_config = flatten_dict(yaml_config)
+        
+        project_level_keys = set()
+        for key, value, is_editable in flat_config:
+            # Check if this config has project_settings: True
+            if isinstance(value, dict) and value.get('project_settings', False):
+                project_level_keys.add(key)
+            elif key in yaml_config and isinstance(yaml_config[key], dict) and yaml_config[key].get('project_settings', False):
+                project_level_keys.add(key)
+        
+        # Also exclude other system keys
+        excluded_keys = {'ui.default_project_id'}.union(project_level_keys)
+        configs = [config for config in configs if config.key not in excluded_keys]
+        
+        # Load YAML config to check editability
+        yaml_config = load_config_from_yaml()
+        flat_config = flatten_dict(yaml_config)
+        
+        # Create a map of config keys to their editability
+        editability_map = {}
+        for key, value, is_editable in flat_config:
+            editability_map[key] = is_editable
+        
         # Group configs by section
         grouped_configs = {}
         for config in configs:
-            if '.' in config.key:
+            if config.key == 'type':
+                section = 'type'  # Special section for artifact types
+            elif config.key == 'default_type':
+                section = 'type'  # Group with artifact types
+            elif '.' in config.key:
                 section = config.key.split('.')[0]
             else:
                 section = 'general'
@@ -225,13 +275,17 @@ def get_config_for_settings():
             if section not in grouped_configs:
                 grouped_configs[section] = []
             
+            # Check if this config item should be editable
+            is_editable = editability_map.get(config.key, True)  # Default to editable if not found
+            
             # Add title and parsed value
             config_dict = {
                 'key': config.key,
                 'value': config.value,
                 'description': config.description,
                 'title': generate_config_title(config.key),
-                'section': section
+                'section': section,
+                'editable': is_editable  # Add editability flag
             }
             
             # Parse value for display
@@ -246,9 +300,18 @@ def get_config_for_settings():
             except (json.JSONDecodeError, TypeError):
                 config_dict['display_value'] = config.value
                 # Determine input type based on key and value
-                if config.key == 'general.default_type':
+                if config.key == 'default_type':
                     config_dict['input_type'] = 'select'
-                    config_dict['options'] = ['Token', 'Troubleshoot', 'Information', 'Other']
+                    # Get options from the type configuration
+                    type_config = session.query(Config).filter_by(key='type').first()
+                    if type_config:
+                        try:
+                            type_options = json.loads(type_config.value)
+                            config_dict['options'] = type_options if isinstance(type_options, list) else ['Token', 'Troubleshoot', 'Information', 'Other']
+                        except (json.JSONDecodeError, TypeError):
+                            config_dict['options'] = ['Token', 'Troubleshoot', 'Information', 'Other']
+                    else:
+                        config_dict['options'] = ['Token', 'Troubleshoot', 'Information', 'Other']
                 elif config.key == 'backup.backup_day':
                     config_dict['input_type'] = 'select'
                     config_dict['options'] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
@@ -260,6 +323,7 @@ def get_config_for_settings():
                     config_dict['input_type'] = 'text'
             
             grouped_configs[section].append(config_dict)
+        
         
         return grouped_configs
         
@@ -277,7 +341,8 @@ def get_section_title(section):
         'trim': 'Display & Formatting',
         'email': 'Email & Notifications',
         'general': 'General Settings',
-        'backup': 'Backup & Recovery Settings'
+        'backup': 'Backup & Recovery Settings',
+        'type': 'Artifact Types'
     }
     return section_titles.get(section, section.replace('_', ' ').title())
 
@@ -289,7 +354,8 @@ def get_section_icon(section):
         'trim': 'fas fa-eye',
         'email': 'fas fa-envelope',
         'general': 'fas fa-cog',
-        'backup': 'fas fa-shield-alt'
+        'backup': 'fas fa-shield-alt',
+        'type': 'fas fa-shapes'
     }
     return section_icons.get(section, 'fas fa-cog')
 

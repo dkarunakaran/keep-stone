@@ -1,40 +1,127 @@
 {% extends "base.html" %}
 
-{% block title %}Project Management - KeepStone{% endblock %}
+{% block title %}Projects Management - KeepStone{% endblock %}
+
+{% block head %}
+<style>
+/* Specific fix for nav-artifact-counter on projects page */
+.navbar .nav-artifact-counter {
+    background: white !important;
+    border: 2px solid #e2e8f0 !important;
+    border-radius: 0.75rem !important;
+    padding: 0.5rem 1rem !important;
+    color: #374151 !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    backdrop-filter: blur(10px) !important;
+    z-index: 9999 !important;
+    position: relative !important;
+}
+
+.navbar .nav-artifact-counter i {
+    color: #4f46e5 !important;
+}
+
+.navbar .nav-artifact-counter .badge {
+    background: #4f46e5 !important;
+    color: white !important;
+}
+
+.navbar .nav-artifact-counter small {
+    color: #6b7280 !important;
+    font-weight: 500 !important;
+}
+
+.navbar .nav-artifact-counter:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2) !important;
+    border-color: #4f46e5 !important;
+}
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h4 class="mb-0">
-        <i class="fas fa-folder me-2 text-primary"></i>Project Management
-    </h4>
-    <a href="{{ url_for('add_project') }}" class="btn btn-primary">
-        <i class="fas fa-plus me-2"></i>New Project
-    </a>
-</div>
+<div class="container-fluid px-0">
+    <!-- Header Section -->
+    <div class="settings-header mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2 class="settings-title mb-2">
+                    <i class="fas fa-folder me-3 text-primary"></i>Projects Management
+                </h2>
+                <p class="settings-subtitle mb-0">Manage projects, members, and configurations</p>
+            </div>
+            <a href="{{ url_for('add_project') }}" class="btn btn-outline-light">
+                <i class="fas fa-plus me-2"></i>New Project
+            </a>
+        </div>
+    </div>
 
-<div class="card">
-    <div class="card-body">
-        {% if projects %}
-        <div class="table-responsive">
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Description</th>
-                        <th>Artifacts</th>
-                        <th>Status</th>
-                        <th>Created</th>
-                        <th class="text-end">Actions</th>
-                    </tr>
-                </thead>
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb bg-transparent p-0">
+            <li class="breadcrumb-item">
+                <a href="{{ url_for('index') }}" class="text-decoration-none breadcrumb-link">
+                    <i class="fas fa-home me-1"></i>Dashboard
+                </a>
+            </li>
+            <li class="breadcrumb-item active text-muted">Projects Management</li>
+        </ol>
+    </nav>
+
+<div class="projects-container">
+    <div class="project-card">
+        <div class="card-body">
+            {% if project_data %}
+            <div class="project-header mb-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h3 class="section-title">
+                        <i class="fas fa-folder-open text-primary"></i>
+                        All Projects ({{ project_data|length }})
+                    </h3>
+                    <div class="project-stats">
+                        <span class="badge bg-info">
+                            <i class="fas fa-chart-bar me-1"></i>{{ project_data|length }} Total
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Description</th>
+                            <th>Owner</th>
+                            <th>Members</th>
+                            <th>Artifacts</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
                 <tbody>
-                    {% for project in projects %}
+                    {% for item in project_data %}
+                    {% set project = item.project %}
                     <tr>
                         <td>
                             <strong>{{ project.name }}</strong>
                             {% if project.is_default %}
                             <span class="badge bg-success ms-2">
-                                <i class="fas fa-star me-1"></i>Default
+                                <i class="fas fa-star me-1"></i>System Default
+                            </span>
+                            {% endif %}
+                            {% if user_default_project and user_default_project.id == project.id %}
+                            <span class="badge bg-primary ms-2">
+                                <i class="fas fa-heart me-1"></i>My Default
+                            </span>
+                            {% endif %}
+                            {% if item.is_owner %}
+                            <span class="badge bg-warning ms-1">
+                                <i class="fas fa-crown me-1"></i>Owner
+                            </span>
+                            {% elif item.is_member %}
+                            <span class="badge bg-info ms-1">
+                                <i class="fas fa-user me-1"></i>Member
                             </span>
                             {% endif %}
                         </td>
@@ -46,8 +133,20 @@
                             {% endif %}
                         </td>
                         <td>
+                            {% if item.owner_user %}
+                            <span class="text-muted">{{ item.owner_user.full_name }}</span>
+                            {% else %}
+                            <span class="text-muted">No owner</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">
+                                <i class="fas fa-users me-1"></i>{{ item.member_count }} member{{ 's' if item.member_count != 1 else '' }}
+                            </span>
+                        </td>
+                        <td>
                             {% set artifact_count = project_artifacts[project.id] %}
-                            <span class="badge {% if artifact_count > 0 %}bg-primary{% else %}bg-secondary{% endif %}">
+                            <span class="badge {% if artifact_count > 0 %}bg-secondary{% else %}bg-primary{% endif %}">
                                 {{ artifact_count }} artifact{{ 's' if artifact_count != 1 else '' }}
                             </span>
                         </td>
@@ -64,28 +163,77 @@
                             </small>
                         </td>
                         <td class="text-end project-actions">
-                            <div class="btn-group" role="group">
-                                <a href="{{ url_for('edit_project', project_id=project.id) }}" 
-                                   class="btn btn-sm btn-outline-primary" 
-                                   title="Edit Project">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                                {% if not project.is_default %}
-                                <form method="POST" action="{{ url_for('set_default_project', project_id=project.id) }}" style="display: inline;">
-                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Set as Default">
-                                        <i class="fas fa-star"></i>
-                                    </button>
-                                </form>
-                                {% endif %}
-                                {% if projects|length > 1 %}
-                                <button type="button" 
-                                        class="btn btn-sm btn-outline-danger" 
-                                        data-bs-toggle="modal" 
-                                        data-bs-target="#deleteProjectModal{{ project.id }}"
-                                        title="Delete Project">
-                                    <i class="fas fa-trash"></i>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" 
+                                        id="actionsDropdown{{ project.id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-ellipsis-v"></i> Actions
                                 </button>
-                                {% endif %}
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdown{{ project.id }}">
+                                    <!-- Member management - visible to members and admins -->
+                                    {% if item.is_member or is_admin %}
+                                    <li>
+                                        <a class="dropdown-item" href="{{ url_for('project_members', project_id=project.id) }}">
+                                            <i class="fas fa-users me-2"></i>Manage Members
+                                        </a>
+                                    </li>
+                                    {% endif %}
+                                    
+                                    <!-- Project Settings - visible to owners and admins -->
+                                    {% if item.is_owner or is_admin %}
+                                    <li>
+                                        <a class="dropdown-item" href="{{ url_for('project_settings', project_id=project.id) }}">
+                                            <i class="fas fa-cog me-2"></i>Project Settings
+                                        </a>
+                                    </li>
+                                    {% endif %}
+                                    
+                                    <!-- Edit project - visible to owners and admins -->
+                                    {% if item.is_owner or is_admin %}
+                                    <li>
+                                        <a class="dropdown-item" href="{{ url_for('edit_project', project_id=project.id) }}">
+                                            <i class="fas fa-edit me-2"></i>Edit Project
+                                        </a>
+                                    </li>
+                                    {% endif %}
+                                    
+                                    {% if (item.is_member or is_admin) and (item.is_owner or is_admin) %}
+                                    <li><hr class="dropdown-divider"></li>
+                                    {% endif %}
+                                    
+                                    <!-- Set as personal default - only for projects user is member of -->
+                                    {% if user_default_project and user_default_project.id == project.id %}
+                                    <li>
+                                        <form method="POST" action="{{ url_for('clear_default_project') }}" class="m-0">
+                                            <button type="submit" class="dropdown-item text-warning">
+                                                <i class="fas fa-star-half-alt me-2"></i>Clear as My Default
+                                            </button>
+                                        </form>
+                                    </li>
+                                    {% elif item.is_member %}
+                                    <li>
+                                        <form method="POST" action="{{ url_for('set_default_project', project_id=project.id) }}" class="m-0">
+                                            <button type="submit" class="dropdown-item">
+                                                <i class="fas fa-star me-2"></i>Set as My Default
+                                            </button>
+                                        </form>
+                                    </li>
+                                    {% endif %}
+                                    
+                                    <!-- Delete project - only owners and admins -->
+                                    {% if (item.is_owner or is_admin) and project_data|length > 1 %}
+                                    {% if item.is_member %}
+                                    <li><hr class="dropdown-divider"></li>
+                                    {% endif %}
+                                    <li>
+                                        <form method="POST" action="{{ url_for('delete_project', project_id=project.id) }}" class="m-0"
+                                              onsubmit="return confirm('Are you sure you want to permanently delete the project \'{{ project.name }}\'? This action cannot be undone!');">
+                                            <button type="submit" class="dropdown-item text-danger">
+                                                <i class="fas fa-trash me-2"></i>Delete Project
+                                            </button>
+                                        </form>
+                                    </li>
+                                    {% endif %}
+                                </ul>
                             </div>
                         </td>
                     </tr>
@@ -94,417 +242,795 @@
             </table>
         </div>
         {% else %}
-        <div class="text-center py-5">
-            <i class="fas fa-folder-open fa-3x text-muted mb-3"></i>
-            <h5 class="text-muted">No projects found</h5>
-            <p class="text-muted">Create your first project to get started.</p>
+        <div class="empty-state">
+            <div class="empty-state-content">
+                <div class="empty-state-icon">
+                    <i class="fas fa-folder-open"></i>
+                </div>
+                <h3 class="empty-state-title">No Projects Found</h3>
+                {% if is_admin %}
+                <p class="empty-state-text">No projects exist in the system yet.</p>
+                <a href="{{ url_for('add_project') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Create First Project
+                </a>
+                {% else %}
+                <p class="empty-state-text">You are not a member of any projects yet. Ask an admin to add you to a project.</p>
+                <a href="{{ url_for('index') }}" class="btn btn-primary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                </a>
+                {% endif %}
+            </div>
         </div>
         {% endif %}
-    </div>
-</div>
-
-<!-- Delete Project Modals -->
-{% for project in projects %}
-{% if projects|length > 1 %}
-<div class="modal fade" id="deleteProjectModal{{ project.id }}" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title text-danger">
-                    <i class="fas fa-exclamation-triangle me-2"></i>Delete Project
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to delete the project <strong>"{{ project.name }}"</strong>?</p>
-                {% if project.is_default %}
-                <div class="alert alert-warning">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    This is the default project. Before deleting, you must set another project as default.
-                </div>
-                {% else %}
-                    {% set artifact_count = project_artifacts[project.id] %}
-                    {% if artifact_count > 0 %}
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle me-2"></i>
-                        This project has {{ artifact_count }} artifact{{ 's' if artifact_count != 1 else '' }}. 
-                        You can move them to another project first.
-                    </div>
-                    <div class="mb-3">
-                        <label for="moveProjectSelect{{ project.id }}" class="form-label">Move artifacts to:</label>
-                        <select class="form-select" id="moveProjectSelect{{ project.id }}">
-                            <option value="">Select a project...</option>
-                            {% for other_project in projects %}
-                            {% if other_project.id != project.id %}
-                            <option value="{{ other_project.id }}">{{ other_project.name }}</option>
-                            {% endif %}
-                            {% endfor %}
-                        </select>
-                    </div>
-                    {% else %}
-                    <div class="alert alert-warning">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        This action cannot be undone.
-                    </div>
-                    {% endif %}
-                {% endif %}
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                {% if not project.is_default %}
-                    {% set artifact_count = project_artifacts[project.id] %}
-                    {% if artifact_count > 0 %}
-                    <button type="button" 
-                            class="btn btn-primary" 
-                            onclick="moveArtifacts({{ project.id }}, '{{ project.name }}')"
-                            id="moveBtn{{ project.id }}">
-                        <i class="fas fa-arrow-right me-2"></i>Move Artifacts
-                    </button>
-                    {% else %}
-                    <form method="POST" action="{{ url_for('delete_project', project_id=project.id) }}" style="display: inline;">
-                        <button type="submit" class="btn btn-danger">
-                            <i class="fas fa-trash me-2"></i>Delete Project
-                        </button>
-                    </form>
-                    {% endif %}
-                {% endif %}
-            </div>
         </div>
     </div>
 </div>
-{% endif %}
-{% endfor %}
+</div>
 
 <style>
+/* Header Styling */
+.settings-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 1.5rem;
+    border-radius: 1rem;
+    color: white;
+    box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
+}
+
+.settings-title {
+    font-weight: 700;
+    font-size: 1.5rem;
+    margin: 0;
+}
+
+.settings-subtitle {
+    font-size: 1rem;
+    opacity: 0.9;
+}
+
+/* Breadcrumb */
+.breadcrumb-link {
+    color: #6b7280;
+    transition: color 0.2s ease;
+}
+
+.breadcrumb-link:hover {
+    color: var(--primary-color);
+}
+
+/* Projects Container */
+.projects-container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* Project Card */
+.project-card {
+    background: white;
+    border-radius: 1rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    border: 1px solid #f1f5f9;
+    margin-bottom: 1.5rem;
+    padding: 1.5rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
+    overflow: visible;
+    z-index: 1;
+}
+
+.project-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+.project-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.project-header {
+    border-bottom: 1px solid #f1f5f9;
+    padding-bottom: 1rem;
+}
+
+.section-title {
+    color: #1f2937;
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.project-stats {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Table Styling */
+.table-responsive {
+    overflow: visible !important;
+    position: static !important;
+}
+
+.table {
+    margin-bottom: 0;
+    position: relative;
+}
+
 .table th {
-    background-color: #f8f9fa;
-    border-top: none;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-color: #e2e8f0;
     font-weight: 600;
+    color: #475569;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-top: none;
 }
 
-.btn-group .btn {
-    border-radius: 0.375rem !important;
-    margin-right: 0.25rem;
+.table td {
+    border-color: #e2e8f0;
+    vertical-align: middle;
+    padding: 1rem 0.75rem;
 }
 
+.table tbody tr:hover {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+/* Badges */
 .badge {
-    font-size: 0.75em;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.35rem 0.75rem;
+    border-radius: 0.5rem;
 }
 
+.badge.bg-success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+}
+
+.badge.bg-primary {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%) !important;
+}
+
+.badge.bg-warning {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+}
+
+.badge.bg-info {
+    background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%) !important;
+}
+
+.badge.bg-secondary {
+    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%) !important;
+}
+
+/* Buttons */
+.btn-sm {
+    font-size: 0.8rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.5rem;
+    font-weight: 500;
+}
+
+.btn-outline-light {
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.btn-outline-light:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.5);
+    color: white;
+}
+
+.btn-outline-info {
+    border-color: #06b6d4;
+    color: #06b6d4;
+}
+
+.btn-outline-info:hover {
+    background: #06b6d4;
+    border-color: #06b6d4;
+}
+
+.btn-outline-primary {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.btn-outline-primary:hover {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-outline-secondary {
+    border-color: #6b7280;
+    color: #6b7280;
+}
+
+.btn-outline-secondary:hover {
+    background: #6b7280;
+    border-color: #6b7280;
+}
+
+.btn-outline-warning {
+    border-color: #f59e0b;
+    color: #f59e0b;
+}
+
+.btn-outline-warning:hover {
+    background: #f59e0b;
+    border-color: #f59e0b;
+}
+
+.btn-outline-danger {
+    border-color: #ef4444;
+    color: #ef4444;
+}
+
+.btn-outline-danger:hover {
+    background: #ef4444;
+    border-color: #ef4444;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    border: none;
+    padding: 0.875rem 2rem;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+}
+
+/* Empty State */
+.empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+}
+
+.empty-state-content {
+    text-align: center;
+    max-width: 400px;
+}
+
+.empty-state-icon {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    color: #9ca3af;
+    font-size: 2rem;
+}
+
+.empty-state-title {
+    color: #374151;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.empty-state-text {
+    color: #6b7280;
+    margin-bottom: 2rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .settings-header {
+        padding: 1rem;
+        text-align: center;
+    }
+    
+    .settings-title {
+        font-size: 1.25rem;
+    }
+    
+    .projects-container {
+        padding: 0 1rem;
+    }
+    
+    .project-header .d-flex {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+    
+    .table-responsive {
+        border-radius: 0.5rem;
+    }
+    
+    .table th,
+    .table td {
+        padding: 0.75rem 0.5rem;
+        font-size: 0.875rem;
+    }
+    
+    .project-actions .dropdown-menu {
+        min-width: 160px;
+        font-size: 0.8rem;
+    }
+    
+    .project-actions .dropdown-item {
+        padding: 0.4rem 0.8rem;
+    }
+    
+    /* Hide less important columns on mobile */
+    .table th:nth-child(3),
+    .table td:nth-child(3),
+    .table th:nth-child(4),
+    .table td:nth-child(4),
+    .table th:nth-child(7),
+    .table td:nth-child(7) {
+        display: none;
+    }
+}
+
+/* Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.project-card {
+    animation: fadeInUp 0.4s ease-out;
+}
+
+.project-card:nth-child(1) { animation-delay: 0s; }
+.project-card:nth-child(2) { animation-delay: 0.1s; }
+.project-card:nth-child(3) { animation-delay: 0.2s; }
+.project-card:nth-child(4) { animation-delay: 0.3s; }
+
+/* Focus States */
+.project-card:focus-within {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(102, 126, 234, 0.15);
+}
+
+/* Action buttons hover effects */
 .project-actions {
-    white-space: nowrap;
+    position: relative;
+}
+
+.project-actions .dropdown {
+    position: relative;
+}
+
+.project-actions .btn {
+    transition: all 0.2s ease;
+}
+
+.project-actions .btn:hover {
+    transform: translateY(-1px);
+}
+
+/* Dropdown Menu Styling */
+.project-actions .dropdown {
+    position: static !important;
+}
+
+ul.dropdown-menu {
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 0.5rem !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
+    padding: 0.5rem 0 !important;
+    min-width: 180px !important;
+    z-index: 999999 !important;
+    position: fixed !important;
+    background: white !important;
+    display: none;
+}
+
+ul.dropdown-menu.show {
+    display: block !important;
+    z-index: 999999 !important;
+    position: fixed !important;
+}
+
+.project-actions ul.dropdown-menu {
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    padding: 0.5rem 0;
+    min-width: 180px;
+    z-index: 999999 !important;
+    position: fixed !important;
+}
+
+.project-actions .dropdown-item {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    color: #374151;
+}
+
+.project-actions .dropdown-item:hover {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    color: #1f2937;
+}
+
+.project-actions .dropdown-item:focus {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    color: #1f2937;
+    box-shadow: none;
+}
+
+.project-actions .dropdown-item.text-warning:hover {
+    background: rgba(245, 158, 11, 0.1);
+    color: #d97706;
+}
+
+.project-actions .dropdown-item.text-danger:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #dc2626;
+}
+
+.project-actions .dropdown-divider {
+    margin: 0.5rem 0;
+    border-color: #e2e8f0;
+}
+
+.project-actions .dropdown-toggle::after {
+    margin-left: 0.5rem;
 }
 </style>
+{% endblock %}
 
+{% block scripts %}
+{{ super() }}
 <script>
-function moveArtifacts(projectId, projectName) {
-    const selectElement = document.getElementById('moveProjectSelect' + projectId);
-    const targetProjectId = selectElement.value;
-    
-    if (!targetProjectId) {
-        alert('Please select a target project');
-        return;
-    }
-    
-    const targetProjectName = selectElement.options[selectElement.selectedIndex].text;
-    
-    if (confirm(`Move all artifacts from "${projectName}" to "${targetProjectName}"?`)) {
-        // Create and submit form
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = `/projects/${projectId}/move_artifacts`;
-        
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'target_project_id';
-        input.value = targetProjectId;
-        
-        form.appendChild(input);
-        document.body.appendChild(form);
-        form.submit();
-    }
-}
-</script>
-
-<script>
-function moveArtifacts(projectId, projectName) {
-    const selectElement = document.getElementById('moveProjectSelect' + projectId);
-    const targetProjectId = selectElement.value;
-    
-    if (!targetProjectId) {
-        alert('Please select a target project');
-        return;
-    }
-    
-    const targetProjectName = selectElement.options[selectElement.selectedIndex].text;
-    
-    if (confirm(`Move all artifacts from "${projectName}" to "${targetProjectName}"?`)) {
-        // Create and submit form
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = `/projects/${projectId}/move_artifacts`;
-        
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'target_project_id';
-        input.value = targetProjectId;
-        
-        form.appendChild(input);
-        document.body.appendChild(form);
-        form.submit();
-    }
-}
-
-// Fix for Bootstrap modal form field issues
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM loaded, setting up modal handlers');
-    
-    // Function to enable form fields
-    function enableFormFields(modal) {
-        console.log('Enabling form fields in modal:', modal.id);
-        
-        // Find all form elements in this modal and ensure they're enabled
-        const formElements = modal.querySelectorAll('input, textarea, select');
-        formElements.forEach(function(element) {
-            element.disabled = false;
-            element.readOnly = false;
-            element.style.pointerEvents = 'auto';
-            element.style.userSelect = 'text';
-            element.style.webkitUserSelect = 'text';
-            element.style.mozUserSelect = 'text';
-            element.style.msUserSelect = 'text';
-            element.style.backgroundColor = '#ffffff';
-            element.style.cursor = 'text';
-            
-            // Remove any readonly or disabled attributes
-            element.removeAttribute('readonly');
-            element.removeAttribute('disabled');
-            
-            console.log('Enabled element:', element.id, element.tagName, element.type);
+    // Enhanced dropdown functionality
+    const dropdownButtons = document.querySelectorAll('.project-actions .dropdown-toggle');
+    dropdownButtons.forEach(function(button) {
+        button.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-1px)';
+            this.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
         });
         
-        // Specifically target edit project inputs
-        const editInputs = modal.querySelectorAll('.edit-project-name, .edit-project-description');
-        editInputs.forEach(function(input) {
-            input.style.backgroundColor = '#ffffff';
-            input.style.border = '1px solid #dee2e6';
-            input.style.color = '#495057';
-            input.style.cursor = 'text';
-            input.style.pointerEvents = 'auto';
-            input.disabled = false;
-            input.readOnly = false;
-            console.log('Specifically enabled edit input:', input.id);
+        button.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = '';
         });
-        
-        // Ensure footer buttons are visible and clickable
-        const footer = modal.querySelector('.modal-footer');
-        if (footer) {
-            footer.style.display = 'flex';
-            footer.style.justifyContent = 'flex-end';
-            footer.style.gap = '0.5rem';
-            footer.style.flexShrink = '0';
-            footer.style.marginTop = 'auto';
-            footer.style.position = 'relative';
-            footer.style.zIndex = '1050';
-            console.log('Modal footer made visible');
+    });
+
+    // Fix dropdown positioning and maintain z-index priority
+    document.addEventListener('shown.bs.dropdown', function(e) {
+        const dropdown = e.target.nextElementSibling;
+        if (dropdown && dropdown.tagName === 'UL' && dropdown.classList.contains('dropdown-menu')) {
+            dropdown.style.position = 'fixed';
+            dropdown.style.zIndex = '999999';
+            dropdown.style.background = 'white';
+            dropdown.style.display = 'block';
+            
+            const rect = e.target.getBoundingClientRect();
+            dropdown.style.left = (rect.right - dropdown.offsetWidth) + 'px';
+            dropdown.style.top = (rect.bottom + 5) + 'px';
+            
+            // Add a class to identify the active dropdown
+            dropdown.classList.add('dropdown-active');
         }
-        
-        // Ensure modal content is properly sized
-        const modalContent = modal.querySelector('.modal-content');
-        if (modalContent) {
-            modalContent.style.display = 'flex';
-            modalContent.style.flexDirection = 'column';
-            modalContent.style.maxHeight = 'calc(100vh - 4rem)';
-            modalContent.style.overflow = 'hidden';
+    });
+
+    // Remove active class when dropdown is hidden
+    document.addEventListener('hidden.bs.dropdown', function(e) {
+        const dropdown = e.target.nextElementSibling;
+        if (dropdown && dropdown.classList.contains('dropdown-menu')) {
+            dropdown.classList.remove('dropdown-active');
         }
-        
-        // Ensure modal body doesn't overflow
-        const modalBody = modal.querySelector('.modal-body');
-        if (modalBody) {
-            modalBody.style.flex = '1';
-            modalBody.style.overflowY = 'auto';
-            modalBody.style.maxHeight = 'calc(100vh - 12rem)';
-        }
-        
-        // Ensure close buttons work
-        const closeButtons = modal.querySelectorAll('[data-bs-dismiss="modal"]');
-        closeButtons.forEach(function(btn) {
-            btn.style.pointerEvents = 'auto';
-            btn.style.cursor = 'pointer';
-            console.log('Close button enabled:', btn.className);
-        });
-    }
-    
-    // Initialize Bootstrap modals explicitly
-    const editModals = document.querySelectorAll('[id^="editProjectModal"]');
-    console.log('Found edit modals:', editModals.length);
-    
-    editModals.forEach(function(modalElement) {
-        // Create Bootstrap modal instance
-        const modal = new bootstrap.Modal(modalElement, {
-            backdrop: true,
-            keyboard: true,
-            focus: true
-        });
-        
-        // Store modal instance for later use
-        modalElement._bsModal = modal;
-        
-        // Try multiple events to ensure fields are enabled
-        modalElement.addEventListener('show.bs.modal', function() {
-            console.log('Edit modal showing:', modalElement.id);
-            enableFormFields(modalElement);
-        });
-        
-        modalElement.addEventListener('shown.bs.modal', function() {
-            console.log('Edit modal shown:', modalElement.id);
-            enableFormFields(modalElement);
-            
-            // Force proper modal sizing
-            const modalDialog = modalElement.querySelector('.modal-dialog');
-            const modalContent = modalElement.querySelector('.modal-content');
-            const modalFooter = modalElement.querySelector('.modal-footer');
-            
-            if (modalDialog) {
-                modalDialog.style.height = 'auto';
-                modalDialog.style.minHeight = '300px';
-                modalDialog.style.maxHeight = 'calc(100vh - 2rem)';
-                modalDialog.style.display = 'flex';
-                modalDialog.style.alignItems = 'center';
+    });
+
+    // Prevent table row hover from affecting active dropdown
+    const tableRows = document.querySelectorAll('.table tbody tr');
+    tableRows.forEach(function(row) {
+        row.addEventListener('mouseenter', function() {
+            // Check if there's an active dropdown
+            const activeDropdown = document.querySelector('ul.dropdown-menu.dropdown-active');
+            if (activeDropdown) {
+                // Ensure active dropdown stays on top
+                activeDropdown.style.zIndex = '999999';
+                activeDropdown.style.position = 'fixed';
             }
             
-            if (modalContent) {
-                modalContent.style.height = 'auto';
-                modalContent.style.minHeight = '300px';
-                modalContent.style.display = 'flex';
-                modalContent.style.flexDirection = 'column';
-            }
-            
-            if (modalFooter) {
-                modalFooter.style.display = 'flex';
-                modalFooter.style.justifyContent = 'flex-end';
-                modalFooter.style.flexShrink = '0';
-                modalFooter.style.marginTop = 'auto';
-                modalFooter.style.visibility = 'visible';
-                modalFooter.style.opacity = '1';
-                modalFooter.style.position = 'relative';
-                modalFooter.style.bottom = '0';
-                console.log('Modal footer positioned:', modalFooter.style.display);
-            }
-            
-            // Focus on the first input field
-            const firstInput = modalElement.querySelector('input[type="text"]');
-            if (firstInput) {
-                setTimeout(() => {
-                    firstInput.focus();
-                    firstInput.select();
-                    console.log('Focused on:', firstInput.id);
-                }, 200);
-            }
+            // Normal row hover effect but with lower z-index
+            this.style.transform = 'scale(1.01)';
+            this.style.transition = 'transform 0.2s ease';
+            this.style.zIndex = '1';
+            this.style.position = 'relative';
         });
         
-        // Handle form submission
-        const form = modalElement.querySelector('form');
-        if (form) {
-            form.addEventListener('submit', function(e) {
-                console.log('Form submitted for modal:', modalElement.id);
-                console.log('Form action:', form.action);
-                console.log('Form method:', form.method);
+        row.addEventListener('mouseleave', function() {
+            this.style.transform = 'scale(1)';
+            this.style.zIndex = '';
+            this.style.position = '';
+        });
+    });
+
+    // Ensure dropdown stays visible when scrolling
+    document.addEventListener('scroll', function() {
+        const openDropdowns = document.querySelectorAll('ul.dropdown-menu.show');
+        openDropdowns.forEach(function(dropdown) {
+            dropdown.style.zIndex = '999999';
+            dropdown.style.position = 'fixed';
+        });
+    });
+
+    // Enhanced dropdown item interactions
+    const dropdownItems = document.querySelectorAll('.project-actions .dropdown-item');
+    dropdownItems.forEach(function(item) {
+        item.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateX(4px)';
+        });
+        
+        item.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateX(0)';
+        });
+    });
+
+    // Enhanced form submission feedback
+    const forms = document.querySelectorAll('form');
+    forms.forEach(function(form) {
+        form.addEventListener('submit', function(e) {
+            const submitBtn = this.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                const originalText = submitBtn.innerHTML;
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
                 
-                // Get form data
-                const formData = new FormData(form);
-                console.log('Form data:', Array.from(formData.entries()));
-                
-                // Let the form submit naturally
-                return true;
-            });
-        }
-    });
-    
-    // Also fix add project modal
-    const addModal = document.getElementById('addProjectModal');
-    if (addModal) {
-        const modal = new bootstrap.Modal(addModal, {
-            backdrop: true,
-            keyboard: true,
-            focus: true
-        });
-        
-        addModal.addEventListener('shown.bs.modal', function() {
-            const firstInput = addModal.querySelector('input[type="text"]');
-            if (firstInput) {
+                // Reset button if form submission fails
                 setTimeout(() => {
-                    firstInput.focus();
-                }, 150);
+                    if (submitBtn.disabled) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalText;
+                    }
+                }, 5000);
             }
         });
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        // Ctrl+N for new project
+        if (e.ctrlKey && e.key === 'n') {
+            e.preventDefault();
+            const newProjectBtn = document.querySelector('a[href*="add_project"]');
+            if (newProjectBtn) {
+                window.location.href = newProjectBtn.href;
+            }
+        }
+    });
+
+    // Simple notification system for successful actions
+    function showNotification(message, type = 'success') {
+        const notification = document.createElement('div');
+        notification.className = `alert alert-${type} alert-dismissible fade show`;
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1050;
+            min-width: 300px;
+            animation: slideInRight 0.3s ease-out;
+        `;
+        
+        notification.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, 5000);
     }
-    
-    // Ensure all modals have proper minimum height
-    const allModals = document.querySelectorAll('.modal');
-    allModals.forEach(function(modal) {
-        const modalDialog = modal.querySelector('.modal-dialog');
-        const modalContent = modal.querySelector('.modal-content');
-        
-        if (modalDialog) {
-            modalDialog.style.minHeight = '500px';
+
+    // Check for URL parameters to show success messages
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('success')) {
+        const action = urlParams.get('action');
+        switch(action) {
+            case 'created':
+                showNotification('Project created successfully!');
+                break;
+            case 'updated':
+                showNotification('Project updated successfully!');
+                break;
+            case 'deleted':
+                showNotification('Project deleted successfully!');
+                break;
+            case 'default_set':
+                showNotification('Default project updated!');
+                break;
+            default:
+                showNotification('Action completed successfully!');
         }
         
-        if (modalContent) {
-            modalContent.style.minHeight = '450px';
-        }
-    });
-    
-    // Add click handlers to edit buttons
-    const editButtons = document.querySelectorAll('[data-bs-target^="#editProjectModal"]');
-    console.log('Found edit buttons:', editButtons.length);
-    
-    editButtons.forEach(function(button) {
-        button.addEventListener('click', function(e) {
-            const targetModalId = this.getAttribute('data-bs-target');
-            console.log('Edit button clicked for modal:', targetModalId);
-            
-            // Find the modal and show it
-            const modalElement = document.querySelector(targetModalId);
-            if (modalElement && modalElement._bsModal) {
-                console.log('Showing modal programmatically');
-                modalElement._bsModal.show();
-            }
-            
-            // Immediately try to enable fields
-            setTimeout(() => {
-                const modal = document.querySelector(targetModalId);
-                if (modal) {
-                    enableFormFields(modal);
-                }
-            }, 50);
-        });
-    });
-    
-    // Handle close button clicks manually if needed
-    document.addEventListener('click', function(e) {
-        if (e.target.matches('[data-bs-dismiss="modal"]') || e.target.closest('[data-bs-dismiss="modal"]')) {
-            const modal = e.target.closest('.modal');
-            if (modal && modal._bsModal) {
-                console.log('Closing modal:', modal.id);
-                modal._bsModal.hide();
-            }
-        }
-    });
-    
-    // Handle update button clicks specifically
-    document.addEventListener('click', function(e) {
-        if (e.target.matches('button[type="submit"]') && e.target.closest('.modal')) {
-            console.log('Update button clicked:', e.target);
-            const form = e.target.closest('form');
-            if (form) {
-                console.log('Form found, submitting:', form.id);
-                // Ensure the form is not prevented from submitting
-                e.stopPropagation();
-                return true;
-            }
-        }
-    });
+        // Clean up URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
 });
+
+function moveArtifacts(projectId, projectName) {
+    const selectElement = document.getElementById('moveProjectSelect' + projectId);
+    const targetProjectId = selectElement.value;
+    
+    if (!targetProjectId) {
+        alert('Please select a target project');
+        return;
+    }
+    
+    const targetProjectName = selectElement.options[selectElement.selectedIndex].text;
+    
+    if (confirm(`Move all artifacts from "${projectName}" to "${targetProjectName}"?`)) {
+        // Create and submit form
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/projects/${projectId}/move_artifacts`;
+        
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'target_project_id';
+        input.value = targetProjectId;
+        
+        form.appendChild(input);
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// CSS for animations and dropdown enhancements
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideInRight {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    .table tbody tr:hover {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important;
+        z-index: 1 !important;
+        position: relative !important;
+    }
+    
+    .project-card:hover::before {
+        width: 6px;
+        transition: width 0.2s ease;
+    }
+    
+    .project-actions .dropdown-item {
+        transition: all 0.2s ease !important;
+    }
+    
+    ul.dropdown-menu {
+        z-index: 999999 !important;
+        position: fixed !important;
+        background: white !important;
+        border: 1px solid #e2e8f0 !important;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
+        opacity: 0;
+        transform: translateY(-10px);
+        transition: all 0.2s ease;
+    }
+    
+    ul.dropdown-menu.show {
+        opacity: 1 !important;
+        transform: translateY(0) !important;
+        z-index: 999999 !important;
+        position: fixed !important;
+        display: block !important;
+    }
+    
+    /* Ensure active dropdown always stays on top */
+    ul.dropdown-menu.dropdown-active {
+        z-index: 9999999 !important;
+        position: fixed !important;
+    }
+    
+    .table-responsive {
+        overflow: visible !important;
+        position: static !important;
+    }
+    
+    .project-actions {
+        position: relative !important;
+        z-index: 10;
+    }
+    
+    .project-card {
+        overflow: visible !important;
+    }
+    
+    .card-body {
+        overflow: visible !important;
+    }
+    
+    /* Global dropdown menu override */
+    body ul.dropdown-menu,
+    html ul.dropdown-menu,
+    * ul.dropdown-menu {
+        z-index: 999999 !important;
+        position: fixed !important;
+    }
+    
+    /* Active dropdown gets highest priority */
+    body ul.dropdown-menu.dropdown-active,
+    html ul.dropdown-menu.dropdown-active,
+    * ul.dropdown-menu.dropdown-active {
+        z-index: 9999999 !important;
+        position: fixed !important;
+    }
+    
+    /* Force all containers to not hide dropdowns */
+    .container-fluid,
+    .projects-container,
+    .project-card,
+    .card-body,
+    .table-responsive,
+    table,
+    tbody,
+    tr,
+    td {
+        overflow: visible !important;
+        position: static !important;
+    }
+    
+    /* Ensure table rows don't interfere with active dropdowns */
+    .table tbody tr {
+        z-index: 1 !important;
+    }
+    
+    .table tbody tr:hover {
+        z-index: 2 !important;
+    }
+    
+    /* But active dropdown is always highest */
+    ul.dropdown-menu.show.dropdown-active {
+        z-index: 9999999 !important;
+    }
+`;
+document.head.appendChild(style);
 </script>
 {% endblock %}
