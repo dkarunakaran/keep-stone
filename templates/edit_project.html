@@ -1,260 +1,222 @@
 {% extends "base.html" %}
 
-{% block title %}Edit Project - KeepStone{% endblock %}
+{% block title %}Edit Project - {{ project.name }} - KeepStone{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h4 class="mb-0">
-        <i class="fas fa-edit me-2 text-primary"></i>Edit Project: {{ project.name }}
-    </h4>
-    <a href="{{ url_for('projects') }}" class="btn btn-outline-secondary">
-        <i class="fas fa-arrow-left me-2"></i>Back to Projects
-    </a>
-</div>
-
-<div class="row justify-content-center">
-    <div class="col-md-8 col-lg-6">
-        <div class="card shadow-sm">
-            <div class="card-header bg-primary text-white">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-folder-open me-2"></i>Project Details
-                </h5>
+<div class="container-fluid px-0">
+    <!-- Header Section -->
+    <div class="settings-header mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2 class="settings-title mb-2">
+                    <i class="fas fa-edit me-3 text-primary"></i>Edit Project
+                </h2>
+                <p class="settings-subtitle mb-0">Update "{{ project.name }}" project details and configuration</p>
             </div>
-            <div class="card-body">
-                <!-- Project Info -->
-                <div class="row mb-4">
-                    <div class="col-md-6">
-                        <div class="bg-light rounded p-3">
-                            <small class="text-muted d-block">Project ID</small>
-                            <strong>{{ project.id }}</strong>
-                        </div>
+            <a href="{{ url_for('projects') }}" class="btn btn-outline-light">
+                <i class="fas fa-arrow-left me-2"></i>Back to Projects
+            </a>
+        </div>
+    </div>
+
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb bg-transparent p-0">
+            <li class="breadcrumb-item">
+                <a href="{{ url_for('index') }}" class="text-decoration-none breadcrumb-link">
+                    <i class="fas fa-home me-1"></i>Dashboard
+                </a>
+            </li>
+            <li class="breadcrumb-item">
+                <a href="{{ url_for('projects') }}" class="text-decoration-none breadcrumb-link">
+                    <i class="fas fa-folder me-1"></i>Projects Management
+                </a>
+            </li>
+            <li class="breadcrumb-item active text-muted">Edit "{{ project.name }}"</li>
+        </ol>
+    </nav>
+
+    <form method="POST" action="{{ url_for('edit_project', project_id=project.id) }}" id="project-edit-form">
+        <div class="settings-container">
+            <!-- Project Information -->
+            <div class="setting-card">
+                <div class="setting-header">
+                    <div class="setting-label">
+                        <i class="fas fa-info-circle me-2"></i>Project Information
                     </div>
-                    <div class="col-md-6">
-                        <div class="bg-light rounded p-3">
-                            <small class="text-muted d-block">Created</small>
-                            <strong>{{ project.created_at.strftime('%Y-%m-%d %H:%M') if project.created_at else 'N/A' }}</strong>
-                        </div>
+                    <div class="setting-description">
+                        Current project details and metadata
                     </div>
                 </div>
                 
-                {% if project.is_default %}
-                <div class="alert alert-info">
-                    <i class="fas fa-star me-2"></i>
-                    This is the default project. All new artifacts will be added to this project by default.
+                <div class="setting-input-container">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="info-item">
+                                <small class="text-muted d-block">Project ID</small>
+                                <strong>{{ project.id }}</strong>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="info-item">
+                                <small class="text-muted d-block">Created</small>
+                                <strong>{{ project.created_at.strftime('%Y-%m-%d %H:%M') if project.created_at else 'N/A' }}</strong>
+                            </div>
+                        </div>
+                        {% if project.is_default %}
+                        <div class="col-md-4">
+                            <div class="info-item">
+                                <small class="text-muted d-block">Status</small>
+                                <span class="badge bg-warning text-dark">
+                                    <i class="fas fa-star me-1"></i>Default Project
+                                </span>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% if project.is_default %}
+                    <div class="alert alert-warning mt-3 mb-0">
+                        <i class="fas fa-star me-2"></i>
+                        This is the default project. All new artifacts will be added to this project by default.
+                    </div>
+                    {% endif %}
                 </div>
-                {% endif %}
+            </div>
+
+            <!-- Project Name -->
+            <div class="setting-card">
+                <div class="setting-header">
+                    <label for="projectName" class="setting-label">
+                        Project Name
+                        <span class="setting-badge">
+                            <i class="fas fa-asterisk me-1"></i>Required
+                        </span>
+                    </label>
+                    <div class="setting-description">
+                        <i class="fas fa-info-circle me-1"></i>Update the project name
+                    </div>
+                </div>
                 
-                <form method="POST" action="{{ url_for('edit_project', project_id=project.id) }}">
-                    <div class="mb-3">
-                        <label for="projectName" class="form-label">
-                            Project Name <span class="text-danger">*</span>
-                        </label>
-                        <input type="text" 
-                               class="form-control form-control-lg" 
-                               id="projectName" 
-                               name="name" 
-                               required 
-                               placeholder="Enter project name"
-                               value="{{ request.form.get('name', project.name) }}"
-                               autofocus>
-                        <div class="form-text">
-                            Choose a unique name for your project
-                        </div>
+                <div class="setting-input-container">
+                    <input type="text" 
+                           class="form-control setting-input" 
+                           id="projectName" 
+                           name="name" 
+                           required 
+                           placeholder="Enter project name"
+                           value="{{ request.form.get('name', project.name) }}"
+                           autofocus>
+                </div>
+            </div>
+
+            <!-- Project Description -->
+            <div class="setting-card">
+                <div class="setting-header">
+                    <label for="projectDescription" class="setting-label">
+                        Description
+                    </label>
+                    <div class="setting-description">
+                        <i class="fas fa-info-circle me-1"></i>Update the project description
                     </div>
-                    
-                    <div class="mb-4">
-                        <label for="projectDescription" class="form-label">Description</label>
-                        <textarea class="form-control" 
-                                  id="projectDescription" 
-                                  name="description" 
-                                  rows="4" 
-                                  placeholder="Optional project description">{{ request.form.get('description', project.description or '') }}</textarea>
-                        <div class="form-text">
-                            Provide a brief description of what this project is about
-                        </div>
-                    </div>
-                    
-                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                        <a href="{{ url_for('projects') }}" class="btn btn-outline-secondary me-md-2">
-                            <i class="fas fa-times me-2"></i>Cancel
-                        </a>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save me-2"></i>Update Project
-                        </button>
-                    </div>
-                </form>
+                </div>
+                
+                <div class="setting-input-container">
+                    <textarea class="form-control setting-input" 
+                              id="projectDescription" 
+                              name="description" 
+                              rows="4" 
+                              placeholder="Optional project description">{{ request.form.get('description', project.description or '') }}</textarea>
+                </div>
             </div>
         </div>
         
-        <!-- Project Actions -->
-        <div class="card mt-4 shadow-sm">
-            <div class="card-header bg-light">
-                <h6 class="card-title mb-0">
-                    <i class="fas fa-cogs me-2"></i>Project Actions
-                </h6>
-            </div>
-            <div class="card-body">
-                <div class="row g-3">
-                    {% if not project.is_default %}
-                    <div class="col-md-6">
-                        <div class="border rounded p-3 h-100">
-                            <h6 class="text-success">
-                                <i class="fas fa-star me-2"></i>Set as Default
-                            </h6>
-                            <p class="text-muted small mb-3">
-                                Make this the default project for new artifacts
-                            </p>
-                            <form method="POST" action="{{ url_for('set_default_project', project_id=project.id) }}">
-                                <button type="submit" class="btn btn-success btn-sm">
-                                    <i class="fas fa-star me-2"></i>Set Default
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                    {% endif %}
-                    
-                    {% if projects|length > 1 %}
-                    <div class="col-md-6">
-                        <div class="border rounded p-3 h-100 border-danger">
-                            <h6 class="text-danger">
-                                <i class="fas fa-trash me-2"></i>Delete Project
-                            </h6>
-                            <p class="text-muted small mb-3">
-                                Permanently remove this project
-                            </p>
-                            {% if project.is_default %}
-                            <p class="text-warning small">
-                                <i class="fas fa-exclamation-triangle me-1"></i>
-                                Cannot delete default project
-                            </p>
-                            {% else %}
-                            <button type="button" 
-                                    class="btn btn-outline-danger btn-sm" 
-                                    data-bs-toggle="modal" 
-                                    data-bs-target="#deleteProjectModal">
-                                <i class="fas fa-trash me-2"></i>Delete
-                            </button>
-                            {% endif %}
-                        </div>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Delete Confirmation Modal -->
-{% if not project.is_default and projects|length > 1 %}
-<div class="modal fade" id="deleteProjectModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header border-danger">
-                <h5 class="modal-title text-danger">
-                    <i class="fas fa-exclamation-triangle me-2"></i>Delete Project
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to delete the project <strong>"{{ project.name }}"</strong>?</p>
-                
-                {% set artifact_count = project_artifacts[project.id] if project_artifacts else 0 %}
-                {% if artifact_count > 0 %}
-                <div class="alert alert-warning">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    This project has {{ artifact_count }} artifact{{ 's' if artifact_count != 1 else '' }}. 
-                    You must move them to another project first.
-                </div>
-                {% else %}
-                <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    This action cannot be undone.
-                </div>
-                {% endif %}
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                {% if artifact_count == 0 %}
-                <form method="POST" action="{{ url_for('delete_project', project_id=project.id) }}" style="display: inline;">
-                    <button type="submit" class="btn btn-danger">
-                        <i class="fas fa-trash me-2"></i>Delete Project
+        <!-- Action Bar -->
+        <div class="action-bar">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="action-buttons">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Save Changes
                     </button>
-                </form>
-                {% endif %}
+                    <a href="{{ url_for('projects') }}" class="btn btn-outline-secondary ms-3">
+                        <i class="fas fa-times me-2"></i>Cancel
+                    </a>
+                </div>
+                
+                <div class="action-info">
+                    <div class="info-badge">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Update the project details and click Save Changes
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
+    </form>
 </div>
-{% endif %}
 
 <style>
-.card {
-    border: none;
+/* Info Items */
+.info-item {
+    padding: 0.75rem;
+    background-color: #f8fafc;
+    border-radius: 0.5rem;
+    border-left: 3px solid #e2e8f0;
+}
+
+.alert-warning {
+    background-color: #fef3c7;
+    border-color: #f59e0b;
+    color: #92400e;
+}
+
+/* Action Bar */
+.action-bar {
+    background: white;
+    padding: 1.5rem 2rem;
     border-radius: 1rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    border: 1px solid #f1f5f9;
+    margin-top: 2rem;
+    position: sticky;
+    bottom: 2rem;
+    z-index: 10;
 }
 
-.card-header {
-    border-radius: 1rem 1rem 0 0 !important;
-    padding: 1.25rem;
-}
-
-.form-control-lg {
+.action-buttons .btn {
+    padding: 0.5rem 1rem;
     border-radius: 0.5rem;
-}
-
-.form-control {
-    border-radius: 0.5rem;
-    border: 1px solid #e2e8f0;
+    font-weight: 600;
     transition: all 0.2s ease;
 }
 
-.form-control:focus {
-    border-color: #4f46e5;
-    box-shadow: 0 0 0 0.25rem rgba(79, 70, 229, 0.1);
-}
-
-.btn {
-    border-radius: 0.5rem;
-    padding: 0.75rem 1.5rem;
-    font-weight: 500;
-}
-
 .btn-primary {
-    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border: none;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
 
 .btn-primary:hover {
-    background: linear-gradient(135deg, #5b21b6 0%, #4338ca 100%);
     transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
 }
 
 .btn-outline-secondary {
-    border-color: #e2e8f0;
-    color: #64748b;
+    border: 2px solid #e5e7eb;
+    color: #6b7280;
 }
 
 .btn-outline-secondary:hover {
-    background-color: #f8fafc;
-    border-color: #cbd5e1;
-    color: #475569;
+    background: #f9fafb;
+    border-color: #d1d5db;
+    color: #374151;
 }
 
-.form-text {
-    color: #64748b;
-    font-size: 0.875rem;
-}
-
-.text-danger {
-    color: #dc2626 !important;
-}
-
-.bg-light {
-    background-color: #f8fafc !important;
-}
-
-.border-danger {
-    border-color: #fecaca !important;
+.info-badge {
+    background: linear-gradient(135deg, #eff6ff 0%, #e0f2fe 100%);
+    color: #1e40af;
+    padding: 0.75rem 1.25rem;
+    border-radius: 0.75rem;
+    font-size: 0.9rem;
+    border: 1px solid #bfdbfe;
 }
 </style>
 
@@ -270,14 +232,24 @@ document.addEventListener('DOMContentLoaded', function() {
     // Auto-resize textarea
     const textarea = document.getElementById('projectDescription');
     if (textarea) {
-        // Initial resize
         textarea.style.height = 'auto';
         textarea.style.height = (textarea.scrollHeight) + 'px';
         
-        // Resize on input
         textarea.addEventListener('input', function() {
             this.style.height = 'auto';
             this.style.height = (this.scrollHeight) + 'px';
+        });
+    }
+
+    // Simple form handling - no interference
+    const form = document.getElementById('project-edit-form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const saveBtn = form.querySelector('button[type="submit"]');
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Saving...';
+            }
         });
     }
 });

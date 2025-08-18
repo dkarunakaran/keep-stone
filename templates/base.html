@@ -27,9 +27,12 @@
             border-radius: 1rem;
             box-shadow: var(--card-shadow);
             backdrop-filter: blur(20px);
-            margin: 2rem auto;
+            margin: 1rem auto;
             padding: 2rem;
-            min-height: 640px;
+            min-height: calc(100vh - 4rem);
+            position: relative;
+            z-index: 1;
+            max-width: 1400px;
         }
 
         .token-card {
@@ -121,9 +124,32 @@
         }
 
         .navbar {
-            background: rgba(255, 255, 255, 0.9) !important;
-            backdrop-filter: blur(12px);
-            box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+            background: rgba(255, 255, 255, 0.95) !important;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            position: sticky;
+            top: 0;
+            z-index: 1050;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.5);
+        }
+        
+        /* Ensure navbar elements maintain visibility on all pages */
+        .navbar .navbar-nav {
+            z-index: 1051 !important;
+        }
+        
+        .navbar .nav-artifact-counter {
+            position: relative;
+            z-index: 1052 !important;
+        }
+        
+        /* Specific fix for pages with container-fluid (like projects page) */
+        body .navbar .nav-artifact-counter,
+        .container-fluid + * .navbar .nav-artifact-counter,
+        .container-fluid .navbar .nav-artifact-counter {
+            background: white !important;
+            border: 2px solid #e2e8f0 !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
         }        .navbar-brand {
             font-weight: 700;
             font-size: 1.5rem;
@@ -131,19 +157,101 @@
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
+            transition: all 0.3s ease;
+            padding: 0.5rem 1rem;
+            border-radius: 0.75rem;
+        }
+
+        .navbar-brand:hover {
+            transform: scale(1.05);
+            filter: drop-shadow(0 4px 8px rgba(99, 102, 241, 0.3));
         }
 
         .nav-link {
             font-weight: 500;
             color: rgb(71 85 105);
-            border-radius: 0.5rem;
-            padding: 0.5rem 1rem;
-            transition: all 0.2s ease;
+            border-radius: 0.75rem;
+            padding: 0.75rem 1.25rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
         }
 
         .nav-link:hover {
-            background: rgb(241 245 249);
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
             color: var(--primary-color);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+        }
+
+        .nav-link:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .nav-link:hover:before {
+            left: 100%;
+        }
+
+        /* Navigation artifact counter */
+        .nav-artifact-counter {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 0.75rem;
+            padding: 0.5rem 1rem;
+            transition: all 0.3s ease;
+            color: #374151 !important; /* Ensure dark text color */
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+        }
+
+        .nav-artifact-counter:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15) !important;
+            border-color: var(--primary-color) !important;
+        }
+
+        .nav-artifact-counter .badge {
+            font-size: 0.75rem;
+            padding: 0.35em 0.6em;
+            background: var(--primary-color) !important;
+            color: white !important;
+        }
+
+        .nav-artifact-counter i {
+            color: var(--primary-color) !important;
+        }
+
+        .nav-artifact-counter small {
+            color: #6b7280 !important;
+            font-weight: 500;
+        }
+
+        /* Search button fix */
+        .search-box {
+            border: 2px solid #e2e8f0 !important;
+            color: #374151 !important;
+        }
+
+        .search-box::placeholder {
+            color: #9ca3af !important;
+        }
+
+        .btn-primary {
+            background: var(--primary-gradient) !important;
+            border: none !important;
+            color: white !important;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
         }
 
         .alert {
@@ -181,11 +289,23 @@
             font-size: 0.875rem;
             background-position: right 1rem center;
             transition: all 0.2s ease;
+            color: #374151 !important;
+            background-color: white !important;
         }
 
         .form-select:focus {
             border-color: var(--primary-color);
             box-shadow: 0 0 0 4px rgb(99 102 241 / 0.1);
+        }
+
+        /* Search form styling */
+        .input-group .form-select {
+            border-radius: 0 !important;
+            color: #374151 !important;
+        }
+
+        .input-group .form-control {
+            color: #374151 !important;
         }
 
         ::-webkit-scrollbar {
@@ -295,6 +415,126 @@
             background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
         }
 
+        /* Settings/Modern Header Styling */
+        .settings-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            color: white;
+            box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
+        }
+
+        .settings-title {
+            font-weight: 700;
+            font-size: 1.5rem;
+            margin: 0;
+        }
+
+        .settings-subtitle {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+
+        /* Breadcrumb */
+        .breadcrumb-link {
+            color: #6b7280;
+            transition: color 0.2s ease;
+        }
+
+        .breadcrumb-link:hover {
+            color: var(--primary-color);
+        }
+
+        /* Settings Container */
+        .settings-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* Sequential Setting Cards */
+        .setting-card {
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            border: 1px solid #f1f5f9;
+            margin-bottom: 1.5rem;
+            padding: 1.5rem;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .setting-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+        }
+
+        .setting-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .setting-header {
+            margin-bottom: 1rem;
+        }
+
+        .setting-label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+
+        .setting-body {
+            color: #6b7280;
+        }
+
+        /* Dashboard specific styles */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .settings-title {
+                font-size: 1.25rem;
+            }
+            
+            .settings-header {
+                padding: 1rem;
+            }
+        }
+
+        /* Search highlighting */
+        mark {
+            background: linear-gradient(135deg, #fef3c7 0%, #fbbf24 100%);
+            color: #92400e;
+            padding: 0.1em 0.2em;
+            border-radius: 0.25rem;
+            font-weight: 600;
+        }
+
+        .search-highlight {
+            background: linear-gradient(135deg, #fef3c7 0%, #fbbf24 100%);
+            color: #92400e;
+            padding: 0.1em 0.2em;
+            border-radius: 0.25rem;
+            font-weight: 600;
+        }
+
         .other-card {
             border-left: 4px solid #64748b;
             background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
@@ -320,6 +560,105 @@
         .text-blue-600 { color: #2563eb; }
         .text-gray-600 { color: #64748b; }
 
+        /* User Dropdown Styles */
+        .dropdown {
+            position: relative;
+            z-index: 1060;
+        }
+        
+        .dropdown .btn.nav-link {
+            background: none;
+            border: none !important;
+            color: inherit;
+            padding: 0.5rem;
+            text-decoration: none;
+            border-radius: 50%;
+            cursor: pointer;
+            position: relative;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .dropdown .btn.nav-link:hover {
+            background: rgb(241 245 249);
+            color: var(--primary-color);
+        }
+        
+        .dropdown .btn.nav-link:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+        }
+        
+        .dropdown-menu {
+            border-radius: 0.75rem;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            padding: 0.5rem 0;
+            min-width: 280px;
+            z-index: 1070;
+            background-color: white;
+            position: absolute;
+            top: 100%;
+            right: 0;
+        }
+        
+        .dropdown-menu.show {
+            display: block !important;
+            z-index: 1070;
+        }
+        
+        .dropdown-toggle::after {
+            margin-left: 0.5rem;
+        }
+        
+        .dropdown-header {
+            padding: 0.75rem 1rem;
+            margin: 0;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-radius: 0.5rem;
+            margin: 0.25rem 0.5rem;
+        }
+        
+        .dropdown-header.small {
+            padding: 0.5rem 1rem 0.25rem 1rem;
+            background: none;
+            margin: 0.5rem 0 0.25rem 0;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 0.75rem;
+        }
+        
+        .dropdown-item {
+            padding: 0.5rem 1rem;
+            transition: all 0.2s ease;
+            border-radius: 0.375rem;
+            margin: 0.125rem 0.5rem;
+        }
+        
+        .dropdown-item:hover {
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            color: white;
+            transform: translateX(2px);
+        }
+        
+        .dropdown-item i {
+            width: 1rem;
+            text-align: center;
+        }
+        
+        .dropdown-divider {
+            margin: 0.5rem 0;
+            border-color: #e5e7eb;
+        }
+        
+        .dropdown-item.text-danger:hover {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            color: white;
+        }
 
        
     </style>
@@ -341,21 +680,18 @@
                                style="border-radius: 0.75rem 0 0 0.75rem;">
                         <select name="type" class="form-select border-start-0 border-end-0" style="max-width: 120px; border-radius: 0;">
                             <option value="">All Types</option>
-                            {% for type_option in [
-                                {'id': '1', 'name': 'Token'},
-                                {'id': '2', 'name': 'Troubleshoot'},
-                                {'id': '3', 'name': 'Information'},
-                                {'id': '4', 'name': 'Other'}
-                            ] %}
-                            <option value="{{ type_option.id }}" {% if request.args.get('type') == type_option.id %}selected{% endif %}>
-                                {{ type_option.name }}
-                            </option>
-                            {% endfor %}
+                            {% if nav_types %}
+                                {% for type_option in nav_types %}
+                                <option value="{{ type_option.id }}" {% if request.args.get('type') == type_option.id %}selected{% endif %}>
+                                    {{ type_option.name }}
+                                </option>
+                                {% endfor %}
+                            {% endif %}
                         </select>
                         <select name="project" class="form-select border-start-0 border-end-0" style="max-width: 140px; border-radius: 0;">
                             <option value="">All Projects</option>
-                            {% if projects %}
-                                {% for project in projects %}
+                            {% if nav_projects %}
+                                {% for project in nav_projects %}
                                 <option value="{{ project.id }}" {% if request.args.get('project') == project.id|string %}selected{% endif %}>
                                     {% if project.is_default %}⭐ {% endif %}{{ project.name[:15] }}{% if project.name|length > 15 %}...{% endif %}
                                 </option>
@@ -369,13 +705,63 @@
                 </form>
             </div>
             
-            <div class="navbar-nav ms-auto d-flex gap-3">
-                <a class="nav-link" href="{{ url_for('index') }}">
-                    <i class="fas fa-home me-2"></i>Dashboard
-                </a>
-                <a class="nav-link" href="{{ url_for('settings') }}">
-                    <i class="fas fa-gear me-2"></i>Settings
-                </a>
+            <div class="navbar-nav ms-auto d-flex gap-3 align-items-center">
+                <!-- Artifact Counter -->
+                <div class="nav-artifact-counter d-flex align-items-center">
+                    <i class="fas fa-box me-2 text-primary"></i>
+                    <span class="badge bg-primary">{{ user_artifact_count|default(0) }}</span>
+                    <small class="ms-2 text-muted fw-medium">artifacts</small>
+                </div>
+                
+                <!-- User Info Dropdown -->
+                {% if current_user.is_authenticated %}
+                <div class="dropdown">
+                    <button class="btn nav-link dropdown-toggle" type="button" 
+                            id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false"
+                            style="border: none; padding: 0.5rem;">
+                        <i class="fas fa-user-circle fa-lg"></i>
+                        {% if current_user.is_admin %}
+                        <span class="badge bg-warning position-absolute top-0 start-100 translate-middle p-1" style="font-size: 0.6rem;">A</span>
+                        {% endif %}
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                        <li>
+                            <div class="dropdown-header">
+                                <div class="fw-bold">{{ current_user.full_name }}</div>
+                                <small class="text-muted">@{{ current_user.username }}</small>
+                                {% if current_user.is_admin %}
+                                <small class="badge bg-warning mt-1">Administrator</small>
+                                {% endif %}
+                            </div>
+                        </li>
+                        {% if current_user.is_admin %}
+                        <li>
+                            <a class="dropdown-item" href="{{ url_for('user_management') }}">
+                                <i class="fas fa-users me-2"></i>User Management
+                            </a>
+                        </li>
+                        {% endif %}
+                        <li>
+                            <a class="dropdown-item" href="{{ url_for('projects') }}">
+                                <i class="fas fa-folder me-2"></i>Projects Management
+                            </a>
+                        </li>
+                        {% if current_user.is_admin %}
+                        <li>
+                            <a class="dropdown-item" href="{{ url_for('settings') }}">
+                                <i class="fas fa-cog me-2"></i>System Wide Settings
+                            </a>
+                        </li>
+                        {% endif %}
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item text-danger" href="{{ url_for('logout') }}">
+                                <i class="fas fa-sign-out-alt me-2"></i>Logout
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                {% endif %}
             </div>
         </div>
     </nav>
@@ -449,7 +835,56 @@
                     const searchBtn = this.querySelector('button[type="submit"]');
                     searchBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
                 });
+                
+                // Handle dynamic type loading when project changes
+                const projectSelect = navSearchForm.querySelector('select[name="project"]');
+                const typeSelect = navSearchForm.querySelector('select[name="type"]');
+                
+                if (projectSelect && typeSelect) {
+                    projectSelect.addEventListener('change', function() {
+                        const selectedProject = this.value;
+                        const currentType = typeSelect.value;
+                        
+                        // Fetch types for the selected project
+                        const url = new URL(window.location.origin + '/get_project_types');
+                        if (selectedProject) {
+                            url.searchParams.set('project', selectedProject);
+                        }
+                        
+                        fetch(url)
+                            .then(response => response.json())
+                            .then(data => {
+                                // Clear existing options except "All Types"
+                                typeSelect.innerHTML = '<option value="">All Types</option>';
+                                
+                                // Add new options
+                                data.types.forEach(type => {
+                                    const option = document.createElement('option');
+                                    option.value = type.id;
+                                    option.textContent = type.name;
+                                    if (type.id === currentType) {
+                                        option.selected = true;
+                                    }
+                                    typeSelect.appendChild(option);
+                                });
+                            })
+                            .catch(error => {
+                                console.error('Error fetching types:', error);
+                            });
+                    });
+                }
             }
+        });
+        
+        // Initialize Bootstrap dropdowns
+        document.addEventListener('DOMContentLoaded', function() {
+            // Simple Bootstrap dropdown initialization
+            var dropdownElementList = [].slice.call(document.querySelectorAll('.dropdown-toggle'));
+            var dropdownList = dropdownElementList.map(function (dropdownToggleEl) {
+                return new bootstrap.Dropdown(dropdownToggleEl);
+            });
+            
+            console.log('Dropdowns initialized:', dropdownList.length);
         });
     </script>
     {% block scripts %}{% endblock %}

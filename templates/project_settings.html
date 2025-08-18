@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}System Wide Settings - KeepStone{% endblock %}
+{% block title %}{{ project.name }} Settings - KeepStone{% endblock %}
 
 {% block content %}
 <div class="container-fluid px-0">
@@ -9,12 +9,12 @@
         <div class="d-flex justify-content-between align-items-center">
             <div>
                 <h2 class="settings-title mb-2">
-                    <i class="fas fa-cog me-3 text-primary"></i>System Wide Settings
+                    <i class="fas fa-cog me-3 text-primary"></i>Project Settings
                 </h2>
-                <p class="settings-subtitle mb-0">Configure global application settings</p>
+                <p class="settings-subtitle mb-0">Configure settings for <strong>"{{ project.name }}"</strong></p>
             </div>
-            <a href="{{ url_for('index') }}" class="btn btn-outline-light">
-                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+            <a href="{{ url_for('projects') }}" class="btn btn-outline-light">
+                <i class="fas fa-arrow-left me-2"></i>Back to Projects
             </a>
         </div>
     </div>
@@ -27,12 +27,17 @@
                     <i class="fas fa-home me-1"></i>Dashboard
                 </a>
             </li>
-            <li class="breadcrumb-item active text-muted">System Wide Settings</li>
+            <li class="breadcrumb-item">
+                <a href="{{ url_for('projects') }}" class="text-decoration-none breadcrumb-link">
+                    <i class="fas fa-folder me-1"></i>Projects Management
+                </a>
+            </li>
+            <li class="breadcrumb-item active text-muted">{{ project.name }} Settings</li>
         </ol>
     </nav>
 
     {% if config_items %}
-    <form method="POST" id="settings-form">
+    <form method="POST" id="project-settings-form">
         <div class="settings-container">
             {% set config_list = [] %}
             {% for section_name, configs in config_items.items() %}
@@ -95,9 +100,9 @@
             <div class="d-flex justify-content-between align-items-center">
                 <div class="action-buttons">
                     <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save me-2"></i>Save System Settings
+                        <i class="fas fa-save me-2"></i>Save Project Settings
                     </button>
-                    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary ms-3">
+                    <a href="{{ url_for('projects') }}" class="btn btn-outline-secondary ms-3">
                         <i class="fas fa-times me-2"></i>Cancel
                     </a>
                 </div>
@@ -105,7 +110,7 @@
                 <div class="action-info">
                     <div class="info-badge">
                         <i class="fas fa-info-circle me-2"></i>
-                        Changes will affect <strong>all users and projects</strong>
+                        Settings apply only to <strong>"{{ project.name }}"</strong>
                     </div>
                 </div>
             </div>
@@ -117,10 +122,10 @@
             <div class="empty-state-icon">
                 <i class="fas fa-cog"></i>
             </div>
-            <h3 class="empty-state-title">No System Settings Available</h3>
-            <p class="empty-state-text">No configurable system settings are currently available.</p>
-            <a href="{{ url_for('index') }}" class="btn btn-primary">
-                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+            <h3 class="empty-state-title">No Project Settings Available</h3>
+            <p class="empty-state-text">This project doesn't have any configurable settings yet.</p>
+            <a href="{{ url_for('projects') }}" class="btn btn-primary">
+                <i class="fas fa-arrow-left me-2"></i>Back to Projects
             </a>
         </div>
     </div>
@@ -511,7 +516,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Form validation and submission
-    const form = document.getElementById('settings-form');
+    const form = document.getElementById('project-settings-form');
     if (form) {
         // Auto-save indication
         const inputs = form.querySelectorAll('input, select, textarea');
@@ -556,7 +561,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 e.preventDefault();
                 if (saveBtn) {
                     saveBtn.disabled = false;
-                    saveBtn.innerHTML = '<i class="fas fa-save me-2"></i>Save System Settings';
+                    saveBtn.innerHTML = '<i class="fas fa-save me-2"></i>Save Project Settings';
                 }
                 
                 // Show validation message
@@ -628,7 +633,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Ctrl+S to save
         if (e.ctrlKey && e.key === 's') {
             e.preventDefault();
-            const form = document.getElementById('settings-form');
+            const form = document.getElementById('project-settings-form');
             if (form) {
                 form.submit();
             }
@@ -636,7 +641,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Escape to cancel
         if (e.key === 'Escape') {
-            const cancelBtn = document.querySelector('a[href*="index"]');
+            const cancelBtn = document.querySelector('a[href*="projects"]');
             if (cancelBtn && confirm('Are you sure you want to leave without saving?')) {
                 window.location.href = cancelBtn.href;
             }
