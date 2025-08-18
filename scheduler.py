@@ -9,6 +9,7 @@ from datetime import datetime, date, timedelta
 from models.base import engine
 from models.artifact import Artifact
 from models.project import Project  # Import Project model to register the table
+from models.project_config import ProjectConfig  # Import ProjectConfig model to register the table
 from utility import delete_image
 from utils.email_utils import check_expiring_tokens
 from utils.config_utils import load_config
