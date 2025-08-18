@@ -12,6 +12,7 @@ import models.artifact
 import models.base
 import models.config
 import models.project
+import models.project_config
 import models.user
 import models.project_member
 

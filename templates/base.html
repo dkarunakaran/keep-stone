@@ -131,6 +131,25 @@
             top: 0;
             z-index: 1050;
             border-bottom: 1px solid rgba(226, 232, 240, 0.5);
+        }
+        
+        /* Ensure navbar elements maintain visibility on all pages */
+        .navbar .navbar-nav {
+            z-index: 1051 !important;
+        }
+        
+        .navbar .nav-artifact-counter {
+            position: relative;
+            z-index: 1052 !important;
+        }
+        
+        /* Specific fix for pages with container-fluid (like projects page) */
+        body .navbar .nav-artifact-counter,
+        .container-fluid + * .navbar .nav-artifact-counter,
+        .container-fluid .navbar .nav-artifact-counter {
+            background: white !important;
+            border: 2px solid #e2e8f0 !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
         }        .navbar-brand {
             font-weight: 700;
             font-size: 1.5rem;
@@ -182,22 +201,57 @@
 
         /* Navigation artifact counter */
         .nav-artifact-counter {
-            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-            border: 1px solid #e2e8f0;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important;
+            border: 1px solid #e2e8f0 !important;
             border-radius: 0.75rem;
             padding: 0.5rem 1rem;
             transition: all 0.3s ease;
+            color: #374151 !important; /* Ensure dark text color */
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
         }
 
         .nav-artifact-counter:hover {
             transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
-            border-color: var(--primary-color);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15) !important;
+            border-color: var(--primary-color) !important;
         }
 
         .nav-artifact-counter .badge {
             font-size: 0.75rem;
             padding: 0.35em 0.6em;
+            background: var(--primary-color) !important;
+            color: white !important;
+        }
+
+        .nav-artifact-counter i {
+            color: var(--primary-color) !important;
+        }
+
+        .nav-artifact-counter small {
+            color: #6b7280 !important;
+            font-weight: 500;
+        }
+
+        /* Search button fix */
+        .search-box {
+            border: 2px solid #e2e8f0 !important;
+            color: #374151 !important;
+        }
+
+        .search-box::placeholder {
+            color: #9ca3af !important;
+        }
+
+        .btn-primary {
+            background: var(--primary-gradient) !important;
+            border: none !important;
+            color: white !important;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
         }
 
         .alert {
@@ -235,11 +289,23 @@
             font-size: 0.875rem;
             background-position: right 1rem center;
             transition: all 0.2s ease;
+            color: #374151 !important;
+            background-color: white !important;
         }
 
         .form-select:focus {
             border-color: var(--primary-color);
             box-shadow: 0 0 0 4px rgb(99 102 241 / 0.1);
+        }
+
+        /* Search form styling */
+        .input-group .form-select {
+            border-radius: 0 !important;
+            color: #374151 !important;
+        }
+
+        .input-group .form-control {
+            color: #374151 !important;
         }
 
         ::-webkit-scrollbar {

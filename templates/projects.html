@@ -2,6 +2,43 @@
 
 {% block title %}Projects Management - KeepStone{% endblock %}
 
+{% block head %}
+<style>
+/* Specific fix for nav-artifact-counter on projects page */
+.navbar .nav-artifact-counter {
+    background: white !important;
+    border: 2px solid #e2e8f0 !important;
+    border-radius: 0.75rem !important;
+    padding: 0.5rem 1rem !important;
+    color: #374151 !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    backdrop-filter: blur(10px) !important;
+    z-index: 9999 !important;
+    position: relative !important;
+}
+
+.navbar .nav-artifact-counter i {
+    color: #4f46e5 !important;
+}
+
+.navbar .nav-artifact-counter .badge {
+    background: #4f46e5 !important;
+    color: white !important;
+}
+
+.navbar .nav-artifact-counter small {
+    color: #6b7280 !important;
+    font-weight: 500 !important;
+}
+
+.navbar .nav-artifact-counter:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2) !important;
+    border-color: #4f46e5 !important;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid px-0">
     <!-- Header Section -->

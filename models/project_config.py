@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import json
-from models.base import Base
+from .base import Base
 
 
 class ProjectConfig(Base):
