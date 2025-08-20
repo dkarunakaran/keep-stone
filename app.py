@@ -777,7 +777,7 @@ def add_artifact():
             session.commit()
             
             flash('Artifact created successfully!', 'success')
-            return redirect(url_for('index'))
+            return redirect(url_for('artifact_detail', artifact_id=artifact.id))
             
         except Exception as e:
             # Delete any saved images if artifact creation fails
@@ -949,7 +949,7 @@ def update_artifact(artifact_id):
             session.commit()
             
             flash('Artifact updated successfully!', 'success')
-            return redirect(url_for('index'))
+            return redirect(url_for('artifact_detail', artifact_id=artifact.id))
             
         except Exception as e:
             print(f"DEBUG: Error updating artifact: {str(e)}")
