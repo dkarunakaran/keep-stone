@@ -143,9 +143,9 @@
                 <div class="setting-input-container">
                     <div class="image-gallery" id="current-images">
                         {% for image in artifact.images %}
-                        <div class="image-item" data-image-id="{{ image.id }}">
-                            <img src="{{ url_for('uploaded_file', filename=image.filename) }}" alt="{{ image.filename }}">
-                            <button type="button" class="remove-btn" onclick="removeExistingImage({{ image.id }})">
+                        <div class="image-item" data-image-name="{{ image.name }}">
+                            <img src="{{ url_for('serve_image', filename=image.path.split('/')[-1]) }}" alt="{{ image.name }}">
+                            <button type="button" class="remove-btn" onclick="removeExistingImage('{{ image.name }}')">
                                 <i class="fas fa-times"></i>
                             </button>
                         </div>
@@ -595,17 +595,17 @@
         }
     }
 
-    function removeExistingImage(imageId) {
-        const imageItem = document.querySelector(`[data-image-id="${imageId}"]`);
+    function removeExistingImage(imageName) {
+        const imageItem = document.querySelector(`[data-image-name="${imageName}"]`);
         if (imageItem) {
             imageItem.remove();
-            removedImageIds.push(imageId);
+            removedImageIds.push(imageName);
             
             // Add hidden input for removed image
             const hiddenInput = document.createElement('input');
             hiddenInput.type = 'hidden';
             hiddenInput.name = 'removed_images[]';
-            hiddenInput.value = imageId;
+            hiddenInput.value = imageName;
             removedImagesContainer.appendChild(hiddenInput);
             
             updateImageCount();
