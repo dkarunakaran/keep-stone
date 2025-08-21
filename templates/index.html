@@ -14,37 +14,6 @@
                     </h2>
                     <p class="settings-subtitle mb-0">Manage your artifacts and projects</p>
                 </div>
-                
-                {% if type_filter or show_all %}
-                    <div class="d-flex align-items-center gap-2 ms-4">
-                        {% if show_all %}
-                            <span class="badge bg-secondary">
-                                <i class="fas fa-list me-1"></i>All Types
-                            </span>
-                            <a href="{{ url_for('index') }}" class="btn btn-sm btn-outline-light">
-                                <i class="fas fa-star me-1"></i>Back to Default
-                            </a>
-                        {% elif type_filter %}
-                            {% set is_default_filter = (config.general and config.general.default_type and types_dict[type_filter|int] == config.general.default_type and not request.args.get('type')) %}
-                            <span class="badge {% if is_default_filter %}bg-success{% else %}bg-primary{% endif %}">
-                                {% if is_default_filter %}
-                                    <i class="fas fa-star me-1"></i>Default: {{ types_dict[type_filter|int] }}
-                                {% else %}
-                                    Type: {{ types_dict[type_filter|int] }}
-                                {% endif %}
-                            </span>
-                            {% if not is_default_filter %}
-                                <a href="{{ url_for('index') }}" class="btn btn-sm btn-outline-light">
-                                    <i class="fas fa-times me-1"></i>Clear Filter
-                                </a>
-                            {% else %}
-                                <a href="{{ url_for('index', type='all') }}" class="btn btn-sm btn-outline-light">
-                                    <i class="fas fa-list me-1"></i>Show All
-                                </a>
-                            {% endif %}
-                        {% endif %}
-                    </div>
-                {% endif %}
             </div>
             
             <a href="{{ url_for('add_artifact') }}" class="btn btn-primary">
@@ -53,51 +22,76 @@
         </div>
     </div>
 
-    <!-- Filter Controls -->
-    <div class="setting-card mb-4">
-        <div class="setting-header">
-            <h3 class="setting-label mb-0">
-                <i class="fas fa-filter me-2 text-primary"></i>Filter Options
-            </h3>
-        </div>
-        <div class="setting-body">
-            <div class="row g-3">
-                <div class="col-md-12">
-                    <!-- Type Filter -->
-                    <form method="GET" class="d-flex align-items-center">
-                        <input type="hidden" name="project" value="{{ project_filter }}">
-                        <label for="dashboard-type-select" class="form-label me-2 mb-0 fw-medium" style="min-width: 80px;">Type:</label>
-                        <select name="type" id="dashboard-type-select" class="form-select" onchange="this.form.submit()">
-                            <option value="all" {% if show_all %}selected{% endif %}>All Types</option>
-                            {% for type in types %}
-                            <option value="{{ type.id }}" {% if type_filter == type.id|string %}selected{% endif %}>
-                                {% if config.general and config.general.default_type == type.name and not request.args.get('type') and not show_all %}
-                                    ⭐ {{ type.name }} (Default)
-                                {% else %}
-                                    {{ type.name }}
-                                {% endif %}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </form>
+    <!-- Compact Filter Bar -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex align-items-center gap-3">
+            <!-- Type Filter -->
+            <form method="GET" class="d-flex align-items-center gap-2">
+                <input type="hidden" name="project" value="{{ project_filter }}">
+                <label for="dashboard-type-select" class="form-label mb-0 fw-medium text-muted" style="font-size: 0.875rem;">Filter:</label>
+                <select name="type" id="dashboard-type-select" class="form-select form-select-sm" 
+                        onchange="this.form.submit()" style="min-width: 150px; max-width: 200px;">
+                    <option value="all" {% if show_all %}selected{% endif %}>All Types</option>
+                    {% for type in types %}
+                    <option value="{{ type.id }}" {% if type_filter == type.id|string %}selected{% endif %}>
+                        {% if config.general and config.general.default_type == type.name and not request.args.get('type') and not show_all %}
+                            ⭐ {{ type.name }} (Default)
+                        {% else %}
+                            {{ type.name }}
+                        {% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </form>
+            
+            <!-- Current Filter Display -->
+            {% if type_filter or show_all %}
+                <div class="d-flex align-items-center gap-2">
+                    {% if show_all %}
+                        <span class="badge bg-secondary px-2 py-1">
+                            <i class="fas fa-list me-1"></i>All Types
+                        </span>
+                        <a href="{{ url_for('index') }}" class="btn btn-sm btn-outline-secondary" style="padding: 0.25rem 0.5rem;">
+                            <i class="fas fa-star me-1"></i>Default
+                        </a>
+                    {% elif type_filter %}
+                        {% set is_default_filter = (config.general and config.general.default_type and types_dict[type_filter|int] == config.general.default_type and not request.args.get('type')) %}
+                        <span class="badge {% if is_default_filter %}bg-success{% else %}bg-primary{% endif %} px-2 py-1">
+                            {% if is_default_filter %}
+                                <i class="fas fa-star me-1"></i>{{ types_dict[type_filter|int] }}
+                            {% else %}
+                                {{ types_dict[type_filter|int] }}
+                            {% endif %}
+                        </span>
+                        {% if not is_default_filter %}
+                            <a href="{{ url_for('index') }}" class="btn btn-sm btn-outline-secondary" style="padding: 0.25rem 0.5rem;">
+                                <i class="fas fa-times me-1"></i>Clear
+                            </a>
+                        {% else %}
+                            <a href="{{ url_for('index', type='all') }}" class="btn btn-sm btn-outline-secondary" style="padding: 0.25rem 0.5rem;">
+                                <i class="fas fa-list me-1"></i>Show All
+                            </a>
+                        {% endif %}
+                    {% endif %}
                 </div>
-            </div>
+            {% endif %}
         </div>
+        
+        <!-- Results Count -->
+        {% if artifacts %}
+            <div class="d-flex align-items-center gap-2">
+                <span class="text-muted" style="font-size: 0.875rem;">
+                    <i class="fas fa-box me-1"></i>{{ artifacts|length }} artifact{{ 's' if artifacts|length != 1 else '' }}
+                </span>
+            </div>
+        {% endif %}
     </div>
 
     <!-- Artifacts Grid -->
     <div class="setting-card">
         <div class="setting-header">
             <h3 class="setting-label mb-0">
-                <span>
-                    <i class="fas fa-box me-2 text-primary"></i>Your Artifacts
-                    {% if artifacts %}
-                        <span class="badge bg-primary ms-2">{{ artifacts|length }}</span>
-                    {% endif %}
-                </span>
-                {% if artifacts|length > 6 %}
-                    <small class="text-muted">Showing {{ artifacts|length }} artifacts</small>
-                {% endif %}
+                <i class="fas fa-grid-2 me-2 text-primary"></i>Your Artifacts
             </h3>
         </div>
         <div class="setting-body">
