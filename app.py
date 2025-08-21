@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 from utils.config_utils import load_config, update_config, get_config_for_settings, get_section_title, get_section_icon, reset_config_to_defaults
 from utils.auth_utils import admin_required, active_user_required, get_safe_redirect_url, init_default_admin, validate_user_data, check_unique_user_fields, format_user_for_display
 from utils.project_config_utils import get_project_config, initialize_project_configs
+from utils.tool_utils import get_enabled_tools, save_project_tools, initialize_project_tools, get_project_tools_for_settings
 
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage, PageBreak, Table, TableStyle
@@ -610,6 +611,11 @@ def index():
     projects = get_all_projects()
     default_project = get_user_default_project()
     
+    # Get enabled tools for current project
+    enabled_tools = []
+    if current_project_id:
+        enabled_tools = get_enabled_tools(current_project_id)
+    
     return render_template('index.html', 
                          artifacts=artifacts,
                          type_filter=type_filter if not show_all else '',
@@ -621,7 +627,8 @@ def index():
                          default_project=default_project,
                          config=config,
                          types_dict=types_dict,
-                         current_project_id=current_project_id)
+                         current_project_id=current_project_id,
+                         enabled_tools=enabled_tools)
 
 @app.route('/search')
 @login_required
@@ -1939,10 +1946,15 @@ def project_settings(project_id):
             # Get project-level config keys
             project_keys = get_project_level_config_keys()
             
+            # Handle tools selection
+            selected_tools = request.form.getlist('tools[]')
+            if save_project_tools(project_id, selected_tools):
+                flash(f'Successfully updated tool selection!', 'success')
+            
             # Get all form data
             updates = {}
             for key in request.form:
-                if key in project_keys:
+                if key in project_keys and key != 'tools[]':
                     value = request.form[key]
                     
                     # Convert values to appropriate types
@@ -1973,12 +1985,99 @@ def project_settings(project_id):
     # Initialize project configs if they don't exist
     initialize_project_configs(project_id)
     
+    # Initialize project tools if they don't exist
+    initialize_project_tools(project_id)
+    
     # Get all config items for display
     config_items = get_project_configs_for_settings(project_id)
     
+    # Get tools data for the tools section
+    project_tools = get_project_tools_for_settings(project_id)
+    
     return render_template('project_settings.html', 
                          project=project, 
-                         config_items=config_items)
+                         config_items=config_items,
+                         project_tools=project_tools)
+
+# Tool Routes
+@app.route('/tools/json_to_csv', methods=['GET', 'POST'])
+@login_required
+@active_user_required
+def tool_json_to_csv():
+    """JSON to CSV conversion tool"""
+    if request.method == 'POST':
+        # Handle form submission for JSON to CSV conversion
+        json_input = request.form.get('json_input', '')
+        if json_input:
+            try:
+                import json
+                import csv
+                import io
+                
+                # Parse JSON
+                data = json.loads(json_input)
+                
+                # Convert to CSV
+                output = io.StringIO()
+                if isinstance(data, list) and len(data) > 0:
+                    fieldnames = data[0].keys() if isinstance(data[0], dict) else ['value']
+                    writer = csv.DictWriter(output, fieldnames=fieldnames)
+                    writer.writeheader()
+                    for row in data:
+                        if isinstance(row, dict):
+                            writer.writerow(row)
+                        else:
+                            writer.writerow({'value': row})
+                else:
+                    # Single object
+                    if isinstance(data, dict):
+                        fieldnames = data.keys()
+                        writer = csv.DictWriter(output, fieldnames=fieldnames)
+                        writer.writeheader()
+                        writer.writerow(data)
+                
+                csv_output = output.getvalue()
+                return render_template('tools/pages/json_to_csv.html', 
+                                     json_input=json_input, 
+                                     csv_output=csv_output)
+                
+            except Exception as e:
+                flash(f'Error converting JSON to CSV: {str(e)}', 'error')
+                return render_template('tools/pages/json_to_csv.html', 
+                                     json_input=json_input)
+    
+    return render_template('tools/pages/json_to_csv.html')
+
+@app.route('/tools/csv_to_json', methods=['GET', 'POST'])
+@login_required
+@active_user_required
+def tool_csv_to_json():
+    """CSV to JSON conversion tool"""
+    if request.method == 'POST':
+        # Handle form submission for CSV to JSON conversion
+        csv_input = request.form.get('csv_input', '')
+        if csv_input:
+            try:
+                import csv
+                import json
+                import io
+                
+                # Parse CSV
+                csv_reader = csv.DictReader(io.StringIO(csv_input))
+                data = list(csv_reader)
+                
+                # Convert to JSON
+                json_output = json.dumps(data, indent=2)
+                return render_template('tools/pages/csv_to_json.html', 
+                                     csv_input=csv_input, 
+                                     json_output=json_output)
+                
+            except Exception as e:
+                flash(f'Error converting CSV to JSON: {str(e)}', 'error')
+                return render_template('tools/pages/csv_to_json.html', 
+                                     csv_input=csv_input)
+    
+    return render_template('tools/pages/csv_to_json.html')
 
 # All routes are defined above. The following runs the app if executed directly.
 

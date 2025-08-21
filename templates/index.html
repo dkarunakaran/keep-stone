@@ -239,13 +239,31 @@
                     {% endif %}
                 </div>
                 <div class="setting-body">
-                    <div class="text-center py-5">
-                        <div class="display-1 text-muted mb-4">
-                            <i class="fas fa-tools"></i>
+                    {% if enabled_tools %}
+                        <div class="d-grid gap-2">
+                            {% for tool in enabled_tools %}
+                            <a href="{{ tool.url }}" class="btn btn-outline-secondary text-start p-3 tool-link">
+                                <div class="d-flex align-items-center">
+                                    <div class="me-3">
+                                        <i class="{{ tool.icon }} fa-lg text-primary"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-0">{{ tool.display_name }}</h6>
+                                        <small class="text-muted">Click to open tool</small>
+                                    </div>
+                                </div>
+                            </a>
+                            {% endfor %}
                         </div>
-                        <h5 class="text-muted">No Tools Added</h5>
-                        <p class="text-muted mb-0">Add the tools from the project.</p>
-                    </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <div class="display-1 text-muted mb-4">
+                                <i class="fas fa-tools"></i>
+                            </div>
+                            <h5 class="text-muted">No Tools Added</h5>
+                            <p class="text-muted mb-0">Add the tools from the project.</p>
+                        </div>
+                    {% endif %}
                 </div>
             </div>
         </div>

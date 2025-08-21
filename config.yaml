@@ -84,8 +84,10 @@ backup:
 tools: 
   project_settings: True
   json_to_csv: 
-    value: None 
+    value: False  # Disabled by default
     edit: True   # Editable
+    description: "JSON to CSV conversion"
   csv_to_json: 
-    value: None 
+    value: False  # Disabled by default
     edit: True   # Editable
+    description: "CSV to JSON conversion"
