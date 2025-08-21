@@ -62,12 +62,12 @@
         </div>
         <div class="setting-body">
             <div class="row g-3">
-                <div class="col-md-6">
+                <div class="col-md-12">
                     <!-- Type Filter -->
                     <form method="GET" class="d-flex align-items-center">
                         <input type="hidden" name="project" value="{{ project_filter }}">
-                        <label for="type-filter" class="form-label me-2 mb-0 fw-medium" style="min-width: 80px;">Type:</label>
-                        <select name="type" id="type-filter" class="form-select" onchange="this.form.submit()">
+                        <label for="dashboard-type-select" class="form-label me-2 mb-0 fw-medium" style="min-width: 80px;">Type:</label>
+                        <select name="type" id="dashboard-type-select" class="form-select" onchange="this.form.submit()">
                             <option value="all" {% if show_all %}selected{% endif %}>All Types</option>
                             {% for type in types %}
                             <option value="{{ type.id }}" {% if type_filter == type.id|string %}selected{% endif %}>
@@ -77,29 +77,6 @@
                                     {{ type.name }}
                                 {% endif %}
                             </option>
-                            {% endfor %}
-                        </select>
-                    </form>
-                </div>
-                
-                <div class="col-md-6">
-                    <!-- Project Filter -->
-                    <form method="GET" class="d-flex align-items-center">
-                        <input type="hidden" name="type" value="{{ type_filter }}">
-                        <label for="project-filter" class="form-label me-2 mb-0 fw-medium" style="min-width: 80px;">Project:</label>
-                        <select name="project" id="project-filter" class="form-select" onchange="this.form.submit()">
-                            <option value="all" {% if project_filter == 'all' %}selected{% endif %}>All Projects</option>
-                            {% if default_project %}
-                            <option value="default" {% if project_filter == 'default' or not project_filter %}selected{% endif %}>
-                                ⭐ {{ default_project.name }}
-                            </option>
-                            {% endif %}
-                            {% for project in projects %}
-                                {% if not project.is_default and (not default_project or project.id != default_project.id) %}
-                                <option value="{{ project.id }}" {% if project_filter == project.id|string %}selected{% endif %}>
-                                    {{ project.name }}
-                                </option>
-                                {% endif %}
                             {% endfor %}
                         </select>
                     </form>
