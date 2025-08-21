@@ -620,7 +620,8 @@ def index():
                          projects=projects,
                          default_project=default_project,
                          config=config,
-                         types_dict=types_dict)
+                         types_dict=types_dict,
+                         current_project_id=current_project_id)
 
 @app.route('/search')
 @login_required
