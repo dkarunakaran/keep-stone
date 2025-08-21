@@ -81,3 +81,11 @@ backup:
   backup_day: 
     value: "monday"  # Day of week to run backup (monday, tuesday, etc.)
     edit: True   # Editable
+tools: 
+  project_settings: True
+  json_to_csv: 
+    value: None 
+    edit: True   # Editable
+  csv_to_json: 
+    value: None 
+    edit: True   # Editable
