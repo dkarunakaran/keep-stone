@@ -925,6 +925,27 @@
             overflow: hidden;
         }
         
+        /* Artifact Counter in Dropdown */
+        .dropdown .dropdown-item-text {
+            padding: 0.75rem 1.25rem !important;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #475569 !important;
+            border-radius: 0.5rem !important;
+            margin: 0 0.5rem;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border: 1px solid #e2e8f0;
+        }
+        
+        .dropdown .dropdown-item-text .badge {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #6366f1 100%) !important;
+            color: white;
+            font-size: 0.75rem;
+            padding: 0.35rem 0.6rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+        }
+        
         .dropdown .dropdown-item::before {
             content: '';
             position: absolute;
@@ -1132,13 +1153,6 @@
                     </ul>
                 </div>
                 
-                <!-- Artifact Counter -->
-                <div class="nav-artifact-counter d-flex align-items-center">
-                    <i class="fas fa-box me-2 text-primary"></i>
-                    <span class="badge bg-primary">{{ user_artifact_count|default(0) }}</span>
-                    <small class="ms-2 text-muted fw-medium">artifacts</small>
-                </div>
-                
                 <!-- User Info Dropdown -->
                 {% if current_user.is_authenticated %}
                 <div class="dropdown">
@@ -1159,6 +1173,15 @@
                                 {% endif %}
                             </div>
                         </li>
+                        <li>
+                            <div class="dropdown-item-text d-flex align-items-center justify-content-between">
+                                <span class="text-muted">
+                                    <i class="fas fa-box me-2"></i>Your Artifacts
+                                </span>
+                                <span class="badge bg-primary">{{ user_artifact_count|default(0) }}</span>
+                            </div>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
                         {% if current_user.is_admin %}
                         <li>
                             <a class="dropdown-item" href="{{ url_for('user_management') }}">
