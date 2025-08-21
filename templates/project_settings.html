@@ -42,7 +42,9 @@
             {% set config_list = [] %}
             {% for section_name, configs in config_items.items() %}
                 {% for config in configs %}
-                    {% set _ = config_list.append(config) %}
+                    {% if not config.key.startswith('tools.') %}
+                        {% set _ = config_list.append(config) %}
+                    {% endif %}
                 {% endfor %}
             {% endfor %}
             
@@ -108,95 +110,41 @@
                 <div class="setting-input-container">
                     <div class="tools-grid">
                         <div class="row g-3">
-                            <div class="col-md-6">
-                                <div class="form-check tool-checkbox">
-                                    <input class="form-check-input" type="checkbox" id="tool_backup" name="tools[]" value="backup">
-                                    <label class="form-check-label" for="tool_backup">
-                                        <div class="tool-item">
-                                            <i class="fas fa-database text-primary me-2"></i>
-                                            <div>
-                                                <strong>Database Backup</strong>
-                                                <small class="text-muted d-block">Automated project data backup</small>
-                                            </div>
+                            {% if project_tools %}
+                                {% for tool in project_tools %}
+                                    <div class="col-md-6">
+                                        <div class="form-check tool-checkbox">
+                                            <input class="form-check-input" type="checkbox" 
+                                                   id="tool_{{ tool.name }}" 
+                                                   name="tools[]" 
+                                                   value="{{ tool.name }}"
+                                                   {% if tool.enabled %}checked{% endif %}>
+                                            <label class="form-check-label" for="tool_{{ tool.name }}">
+                                                <div class="tool-item">
+                                                    {% if tool.name == 'json_to_csv' %}
+                                                        <i class="fas fa-file-code text-primary me-2"></i>
+                                                    {% elif tool.name == 'csv_to_json' %}
+                                                        <i class="fas fa-file-csv text-success me-2"></i>
+                                                    {% else %}
+                                                        <i class="fas fa-tools text-secondary me-2"></i>
+                                                    {% endif %}
+                                                    <div>
+                                                        <strong>{{ tool.display_name }}</strong>
+                                                        <small class="text-muted d-block">{{ tool.description }}</small>
+                                                    </div>
+                                                </div>
+                                            </label>
                                         </div>
-                                    </label>
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="col-12">
+                                    <div class="text-center text-muted py-4">
+                                        <i class="fas fa-tools fa-2x mb-3"></i>
+                                        <p>No tools available</p>
+                                    </div>
                                 </div>
-                            </div>
-                            
-                            <div class="col-md-6">
-                                <div class="form-check tool-checkbox">
-                                    <input class="form-check-input" type="checkbox" id="tool_export" name="tools[]" value="export">
-                                    <label class="form-check-label" for="tool_export">
-                                        <div class="tool-item">
-                                            <i class="fas fa-file-export text-success me-2"></i>
-                                            <div>
-                                                <strong>Bulk Export</strong>
-                                                <small class="text-muted d-block">Export multiple artifacts at once</small>
-                                            </div>
-                                        </div>
-                                    </label>
-                                </div>
-                            </div>
-                            
-                            <div class="col-md-6">
-                                <div class="form-check tool-checkbox">
-                                    <input class="form-check-input" type="checkbox" id="tool_analytics" name="tools[]" value="analytics">
-                                    <label class="form-check-label" for="tool_analytics">
-                                        <div class="tool-item">
-                                            <i class="fas fa-chart-bar text-info me-2"></i>
-                                            <div>
-                                                <strong>Analytics Dashboard</strong>
-                                                <small class="text-muted d-block">View project usage statistics</small>
-                                            </div>
-                                        </div>
-                                    </label>
-                                </div>
-                            </div>
-                            
-                            <div class="col-md-6">
-                                <div class="form-check tool-checkbox">
-                                    <input class="form-check-input" type="checkbox" id="tool_scheduler" name="tools[]" value="scheduler">
-                                    <label class="form-check-label" for="tool_scheduler">
-                                        <div class="tool-item">
-                                            <i class="fas fa-clock text-warning me-2"></i>
-                                            <div>
-                                                <strong>Task Scheduler</strong>
-                                                <small class="text-muted d-block">Schedule automated tasks</small>
-                                            </div>
-                                        </div>
-                                    </label>
-                                </div>
-                            </div>
-                            
-                            <div class="col-md-6">
-                                <div class="form-check tool-checkbox">
-                                    <input class="form-check-input" type="checkbox" id="tool_notifications" name="tools[]" value="notifications">
-                                    <label class="form-check-label" for="tool_notifications">
-                                        <div class="tool-item">
-                                            <i class="fas fa-bell text-danger me-2"></i>
-                                            <div>
-                                                <strong>Notifications</strong>
-                                                <small class="text-muted d-block">Get alerts for important events</small>
-                                            </div>
-                                        </div>
-                                    </label>
-                                </div>
-                            </div>
-                            
-                            <div class="col-md-6">
-                                <div class="form-check tool-checkbox">
-                                    <input class="form-check-input" type="checkbox" id="tool_collaboration" name="tools[]" value="collaboration">
-                                    <label class="form-check-label" for="tool_collaboration">
-                                        <div class="tool-item">
-                                            <i class="fas fa-users text-secondary me-2"></i>
-                                            <div>
-                                                <strong>Team Collaboration</strong>
-                                                <small class="text-muted d-block">Share and collaborate on artifacts</small>
-                                            </div>
-                                        </div>
-                                    </label>
-                                </div>
-                            </div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
