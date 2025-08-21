@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 from utils.config_utils import load_config, update_config, get_config_for_settings, get_section_title, get_section_icon, reset_config_to_defaults
 from utils.auth_utils import admin_required, active_user_required, get_safe_redirect_url, init_default_admin, validate_user_data, check_unique_user_fields, format_user_for_display
 from utils.project_config_utils import get_project_config, initialize_project_configs
-from utils.tool_utils import get_enabled_tools, save_project_tools, initialize_project_tools, get_project_tools_for_settings
+from utils.tool_utils import get_enabled_tools, save_project_tools, initialize_project_tools, get_project_tools_for_settings, initialize_tools_table
 
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage, PageBreak, Table, TableStyle
@@ -49,6 +49,13 @@ load_dotenv()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY')
+
+# Initialize tools table from config.yaml on startup
+try:
+    initialize_tools_table()
+    print("Tools table synchronized with config.yaml")
+except Exception as e:
+    print(f"Warning: Failed to initialize tools table: {e}")
 
 # Initialize Flask-Login
 login_manager = LoginManager()

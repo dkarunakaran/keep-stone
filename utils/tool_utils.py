@@ -11,39 +11,57 @@ from utils.config_utils import load_config_from_yaml
 Session = sessionmaker(bind=engine)
 
 def initialize_tools_table():
-    """Initialize the tools table from config.yaml if it's empty"""
+    """Initialize/sync the tools table with config.yaml"""
     session = Session()
     try:
-        # Check if tools table is empty
-        existing_tools = session.query(Tool).count()
-        if existing_tools > 0:
-            return True  # Already initialized
-        
         # Load config from YAML
         yaml_config = load_config_from_yaml()
         tools_config = yaml_config.get('tools', {})
         
-        # Add tools to the tools table
+        # Get existing tools from database
+        existing_tools = session.query(Tool).all()
+        existing_tools_map = {tool.name: tool for tool in existing_tools}
+        
+        # Process each tool from config
         for tool_key, tool_data in tools_config.items():
             # Skip the project_settings flag
             if tool_key == 'project_settings':
                 continue
                 
             if isinstance(tool_data, dict):
-                # Create tool entry
-                description = 'Conversion tool'
-                if isinstance(tool_data, dict) and 'description' in tool_data:
-                    description = tool_data['description']
+                # Extract tool metadata from config
+                display_name = tool_data.get('display_name', get_tool_display_name(tool_key))
+                description = tool_data.get('description', f'{display_name} conversion tool')
+                icon = tool_data.get('icon', get_tool_icon(tool_key))
+                url = tool_data.get('url', f'/tools/{tool_key}')
                 
-                tool = Tool(
-                    name=tool_key,
-                    display_name=get_tool_display_name(tool_key),
-                    description=description,
-                    icon=get_tool_icon(tool_key),
-                    url=f'/tools/{tool_key}',
-                    enabled=True  # All tools are available by default
-                )
-                session.add(tool)
+                if tool_key in existing_tools_map:
+                    # Update existing tool with latest config data
+                    tool = existing_tools_map[tool_key]
+                    tool.display_name = display_name
+                    tool.description = description
+                    tool.icon = icon
+                    tool.url = url
+                    tool.enabled = True
+                else:
+                    # Create new tool entry
+                    tool = Tool(
+                        name=tool_key,
+                        display_name=display_name,
+                        description=description,
+                        icon=icon,
+                        url=url,
+                        enabled=True
+                    )
+                    session.add(tool)
+        
+        # Remove tools that are no longer in config.yaml
+        config_tool_names = set(tool_key for tool_key in tools_config.keys() 
+                               if tool_key != 'project_settings' and isinstance(tools_config[tool_key], dict))
+        
+        for existing_tool in existing_tools:
+            if existing_tool.name not in config_tool_names:
+                existing_tool.enabled = False  # Disable instead of deleting to preserve data
         
         session.commit()
         return True
