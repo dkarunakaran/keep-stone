@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from datetime import datetime, date
 import os
+import sys
 import utility
 import yaml
 from sqlalchemy.orm import sessionmaker
@@ -23,7 +24,6 @@ from reportlab.lib import colors
 from reportlab.lib.enums import TA_JUSTIFY, TA_CENTER, TA_LEFT
 from reportlab.platypus.flowables import HRFlowable
 import io
-import os
 import re
 from PIL import Image as PILImage
 
@@ -139,9 +139,13 @@ def inject_navigation_context():
     # Get projects for navigation
     nav_projects = get_all_projects()
     
+    # Get default project for the current user
+    default_project = get_user_default_project()
+    
     return {
         'nav_types': nav_types,
-        'nav_projects': nav_projects
+        'nav_projects': nav_projects,
+        'default_project': default_project
     }
 
 @app.context_processor

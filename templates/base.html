@@ -566,6 +566,281 @@
             z-index: 1060;
         }
         
+        /* Project Dropdown Styles - Modern Design */
+        .project-dropdown-btn {
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%) !important;
+            border: 1px solid #e2e8f0 !important;
+            color: #334155 !important;
+            font-weight: 500;
+            font-size: 0.875rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.75rem !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .project-dropdown-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.1), transparent);
+            transition: left 0.5s;
+        }
+        
+        .project-dropdown-btn:hover {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important;
+            border-color: var(--primary-color) !important;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+            color: var(--primary-color) !important;
+        }
+        
+        .project-dropdown-btn:hover::before {
+            left: 100%;
+        }
+        
+        .project-dropdown-btn:focus {
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%) !important;
+            border-color: var(--primary-color) !important;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15), 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            outline: none;
+        }
+        
+        .project-dropdown-btn .fas {
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-right: 0.5rem;
+        }
+        
+        /* Legacy selector for compatibility */
+        .nav-item .dropdown-toggle {
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%) !important;
+            border: 1px solid #e2e8f0 !important;
+            color: #334155 !important;
+            font-weight: 500;
+            font-size: 0.875rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.75rem !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .nav-item .dropdown-toggle::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.1), transparent);
+            transition: left 0.5s;
+        }
+        
+        .nav-item .dropdown-toggle:hover {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important;
+            border-color: var(--primary-color) !important;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+            color: var(--primary-color) !important;
+        }
+        
+        .nav-item .dropdown-toggle:hover::before {
+            left: 100%;
+        }
+        
+        .nav-item .dropdown-toggle:focus {
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%) !important;
+            border-color: var(--primary-color) !important;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15), 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            outline: none;
+        }
+        
+        .nav-item .dropdown-toggle .fas {
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-right: 0.5rem;
+        }
+        
+        /* Modern Dropdown Menu */
+        .nav-item .dropdown-menu {
+            border: none !important;
+            border-radius: 1rem !important;
+            box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25) !important;
+            backdrop-filter: blur(20px);
+            background: rgba(255, 255, 255, 0.95) !important;
+            padding: 0.75rem 0;
+            margin-top: 0.5rem;
+            min-width: 220px;
+            animation: dropdownSlide 0.2s ease-out;
+        }
+        
+        @keyframes dropdownSlide {
+            from {
+                opacity: 0;
+                transform: translateY(-10px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        .nav-item .dropdown-item {
+            padding: 0.75rem 1.25rem !important;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #475569 !important;
+            border-radius: 0.5rem !important;
+            margin: 0 0.5rem;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .nav-item .dropdown-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: var(--primary-gradient);
+            opacity: 0.1;
+            transition: left 0.3s;
+        }
+        
+        .nav-item .dropdown-item:hover {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #6366f1 100%) !important;
+            color: white !important;
+            transform: translateX(4px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .nav-item .dropdown-item:hover::before {
+            left: 100%;
+        }
+        
+        .nav-item .dropdown-item:hover .fas {
+            color: white !important;
+            -webkit-text-fill-color: white !important;
+        }
+        
+        .nav-item .dropdown-item .fas {
+            width: 16px;
+            text-align: center;
+            margin-right: 0.75rem;
+            color: var(--primary-color);
+            transition: all 0.2s ease;
+        }
+        
+        .nav-item .dropdown-divider {
+            margin: 0.5rem 1rem;
+            border-color: #e2e8f0 !important;
+            opacity: 0.6;
+        }
+        
+        /* Active project indicator */
+        .nav-item .dropdown-item.active {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%) !important;
+            color: var(--primary-color) !important;
+            border-left: 3px solid var(--primary-color);
+        }
+        
+        /* User Dropdown Styles - Modern Design */
+        .dropdown {
+            position: relative;
+            z-index: 1060;
+        }
+        
+        /* Modern User Menu Button */
+        .user-dropdown-btn {
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%) !important;
+            border: 1px solid #e2e8f0 !important;
+            color: #334155 !important;
+            width: 44px;
+            height: 44px;
+            border-radius: 50% !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 4px 0 rgb(0 0 0 / 0.1);
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .user-dropdown-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.1), transparent);
+            transition: left 0.5s;
+            border-radius: 50%;
+        }
+        
+        .user-dropdown-btn:hover {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #6366f1 100%) !important;
+            color: white !important;
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 8px 25px -5px rgba(99, 102, 241, 0.4);
+            border-color: var(--primary-color) !important;
+        }
+        
+        .user-dropdown-btn:hover::before {
+            left: 100%;
+        }
+        
+        .user-dropdown-btn:focus {
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%) !important;
+            border-color: var(--primary-color) !important;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15), 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            outline: none;
+        }
+        
+        .user-dropdown-btn .fas {
+            font-size: 1.25rem;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .user-dropdown-btn:hover .fas {
+            -webkit-text-fill-color: white !important;
+            color: white !important;
+        }
+        
+        /* Admin Badge */
+        .user-dropdown-btn .badge {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+            border: 2px solid white;
+            font-size: 0.65rem !important;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        /* Legacy styles for non-modern buttons */
         .dropdown .btn.nav-link {
             background: none;
             border: none !important;
@@ -592,6 +867,124 @@
             box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
         }
         
+        /* Modern User Dropdown Menu */
+        .dropdown .dropdown-menu {
+            border: none !important;
+            border-radius: 1rem !important;
+            box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25) !important;
+            backdrop-filter: blur(20px);
+            background: rgba(255, 255, 255, 0.95) !important;
+            padding: 0.75rem 0;
+            margin-top: 0.5rem;
+            min-width: 280px;
+            animation: dropdownSlide 0.2s ease-out;
+            z-index: 1070;
+            position: absolute;
+            top: 100%;
+            right: 0;
+        }
+        
+        /* User Dropdown Header */
+        .dropdown .dropdown-header {
+            padding: 1rem 1.5rem 0.75rem !important;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            margin: 0 0.5rem 0.5rem;
+            border-radius: 0.75rem;
+            border-left: 3px solid var(--primary-color);
+        }
+        
+        .dropdown .dropdown-header .fw-bold {
+            color: #334155 !important;
+            font-size: 1rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        .dropdown .dropdown-header .text-muted {
+            color: #64748b !important;
+            font-size: 0.8rem;
+        }
+        
+        .dropdown .dropdown-header .badge {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+            color: white;
+            font-size: 0.7rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.5rem;
+        }
+        
+        /* User Menu Items */
+        .dropdown .dropdown-item {
+            padding: 0.75rem 1.25rem !important;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #475569 !important;
+            border-radius: 0.5rem !important;
+            margin: 0 0.5rem;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .dropdown .dropdown-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: var(--primary-gradient);
+            opacity: 0.1;
+            transition: left 0.3s;
+        }
+        
+        .dropdown .dropdown-item:hover {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #6366f1 100%) !important;
+            color: white !important;
+            transform: translateX(4px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .dropdown .dropdown-item:hover::before {
+            left: 100%;
+        }
+        
+        .dropdown .dropdown-item:hover .fas {
+            color: white !important;
+        }
+        
+        .dropdown .dropdown-item .fas {
+            width: 16px;
+            text-align: center;
+            margin-right: 0.75rem;
+            color: var(--primary-color);
+            transition: all 0.2s ease;
+        }
+        
+        /* Logout Item Special Styling */
+        .dropdown .dropdown-item.text-danger {
+            color: #dc2626 !important;
+        }
+        
+        .dropdown .dropdown-item.text-danger .fas {
+            color: #dc2626 !important;
+        }
+        
+        .dropdown .dropdown-item.text-danger:hover {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+            color: white !important;
+        }
+        
+        .dropdown .dropdown-item.text-danger:hover .fas {
+            color: white !important;
+        }
+        
+        .dropdown .dropdown-divider {
+            margin: 0.5rem 1rem;
+            border-color: #e2e8f0 !important;
+            opacity: 0.6;
+        }
+        
+        /* Legacy dropdown menu for compatibility */
         .dropdown-menu {
             border-radius: 0.75rem;
             border: 1px solid #e5e7eb;
@@ -669,7 +1062,7 @@
             <a class="navbar-brand" href="{{ url_for('index') }}">
                 <i class="fas fa-archive me-2"></i>KeepStone
             </a>            <!-- Centered Search Bar -->
-            <div class="mx-auto" style="max-width: 500px; width: 100%;">
+            <div class="mx-auto" style="max-width: 400px; width: 100%;">
                 <form method="GET" action="{{ url_for('search') }}" class="d-flex">
                     <div class="input-group">
                         <input type="text" 
@@ -678,7 +1071,7 @@
                                placeholder="Search artifacts..." 
                                value="{{ request.args.get('search', '') }}"
                                style="border-radius: 0.75rem 0 0 0.75rem;">
-                        <select name="type" class="form-select border-start-0 border-end-0" style="max-width: 120px; border-radius: 0;">
+                        <select name="type" class="form-select border-start-0 border-end-0" style="max-width: 120px; border-radius: 0;" id="nav-type-select">
                             <option value="">All Types</option>
                             {% if nav_types %}
                                 {% for type_option in nav_types %}
@@ -688,16 +1081,8 @@
                                 {% endfor %}
                             {% endif %}
                         </select>
-                        <select name="project" class="form-select border-start-0 border-end-0" style="max-width: 140px; border-radius: 0;">
-                            <option value="">All Projects</option>
-                            {% if nav_projects %}
-                                {% for project in nav_projects %}
-                                <option value="{{ project.id }}" {% if request.args.get('project') == project.id|string %}selected{% endif %}>
-                                    {% if project.is_default %}⭐ {% endif %}{{ project.name[:15] }}{% if project.name|length > 15 %}...{% endif %}
-                                </option>
-                                {% endfor %}
-                            {% endif %}
-                        </select>
+                        <!-- Hidden field to preserve project filter in search -->
+                        <input type="hidden" name="project" value="{{ request.args.get('project', 'default') }}">
                         <button type="submit" class="btn btn-primary" style="border-radius: 0 0.75rem 0.75rem 0;">
                             <i class="fas fa-search"></i>
                         </button>
@@ -706,6 +1091,47 @@
             </div>
             
             <div class="navbar-nav ms-auto d-flex gap-3 align-items-center">
+                <!-- Project Selection Dropdown -->
+                <div class="nav-item dropdown">
+                    <button class="btn dropdown-toggle d-flex align-items-center project-dropdown-btn" 
+                            type="button" id="projectDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-folder me-2"></i>
+                        <span id="current-project-name">
+                            {% if request.args.get('project') == 'default' %}
+                                {{ default_project.name if default_project else 'Personal' }}
+                            {% elif request.args.get('project') == 'all' %}
+                                All Projects
+                            {% elif request.args.get('project') %}
+                                {% for project in nav_projects %}
+                                    {% if project.id|string == request.args.get('project') %}
+                                        {{ project.name }}
+                                    {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                {% if default_project %}{{ default_project.name }}{% else %}All Projects{% endif %}
+                            {% endif %}
+                        </span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="projectDropdown">
+                        <li><a class="dropdown-item" href="javascript:void(0)" onclick="changeProjectAndUpdateTypes('default', '{{ default_project.name if default_project else 'Personal' }}')">
+                            <i class="fas fa-user me-2"></i>{{ default_project.name if default_project else 'Personal' }}
+                        </a></li>
+                        <li><a class="dropdown-item" href="javascript:void(0)" onclick="changeProjectAndUpdateTypes('all', 'All Projects')">
+                            <i class="fas fa-globe me-2"></i>All Projects
+                        </a></li>
+                        {% if nav_projects %}
+                        <li><hr class="dropdown-divider"></li>
+                        {% for project in nav_projects %}
+                            {% if not (default_project and project.id == default_project.id) %}
+                            <li><a class="dropdown-item" href="javascript:void(0)" onclick="changeProjectAndUpdateTypes('{{ project.id }}', '{{ project.name|replace("'", "\\'") }}')">
+                                <i class="fas fa-folder me-2"></i>{{ project.name }}
+                            </a></li>
+                            {% endif %}
+                        {% endfor %}
+                        {% endif %}
+                    </ul>
+                </div>
+                
                 <!-- Artifact Counter -->
                 <div class="nav-artifact-counter d-flex align-items-center">
                     <i class="fas fa-box me-2 text-primary"></i>
@@ -716,12 +1142,11 @@
                 <!-- User Info Dropdown -->
                 {% if current_user.is_authenticated %}
                 <div class="dropdown">
-                    <button class="btn nav-link dropdown-toggle" type="button" 
-                            id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false"
-                            style="border: none; padding: 0.5rem;">
-                        <i class="fas fa-user-circle fa-lg"></i>
+                    <button class="btn dropdown-toggle user-dropdown-btn" type="button" 
+                            id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-user-circle"></i>
                         {% if current_user.is_admin %}
-                        <span class="badge bg-warning position-absolute top-0 start-100 translate-middle p-1" style="font-size: 0.6rem;">A</span>
+                        <span class="badge">A</span>
                         {% endif %}
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
@@ -730,7 +1155,7 @@
                                 <div class="fw-bold">{{ current_user.full_name }}</div>
                                 <small class="text-muted">@{{ current_user.username }}</small>
                                 {% if current_user.is_admin %}
-                                <small class="badge bg-warning mt-1">Administrator</small>
+                                <small class="badge mt-1">Administrator</small>
                                 {% endif %}
                             </div>
                         </li>
@@ -783,6 +1208,93 @@
         </div>
     </div>    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Project selection functionality
+        function changeProject(projectId) {
+            const currentUrl = new URL(window.location);
+            
+            // Update project parameter
+            currentUrl.searchParams.set('project', projectId);
+            
+            // Clear type filter when changing projects to avoid invalid combinations
+            currentUrl.searchParams.delete('type');
+            
+            // Navigate to the updated URL
+            window.location.href = currentUrl.toString();
+        }
+
+        // Update types for project
+        function updateTypesForProject(projectId) {
+            const url = new URL(window.location.origin + '/get_project_types');
+            if (projectId && projectId !== 'all') {
+                url.searchParams.set('project', projectId);
+            }
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    // Update navigation type select
+                    const navTypeSelect = document.getElementById('nav-type-select');
+                    if (navTypeSelect) {
+                        const currentType = navTypeSelect.value;
+                        navTypeSelect.innerHTML = '<option value="">All Types</option>';
+                        
+                        if (data.types) {
+                            data.types.forEach(type => {
+                                const option = document.createElement('option');
+                                option.value = type.id;
+                                option.textContent = type.name;
+                                if (type.id === currentType) {
+                                    option.selected = true;
+                                }
+                                navTypeSelect.appendChild(option);
+                            });
+                        }
+                    }
+                    
+                    // Update dashboard type filter if it exists
+                    const dashboardTypeSelect = document.getElementById('dashboard-type-select');
+                    if (dashboardTypeSelect) {
+                        const currentDashboardType = dashboardTypeSelect.value;
+                        dashboardTypeSelect.innerHTML = '<option value="all">All Types</option>';
+                        
+                        if (data.types) {
+                            data.types.forEach(type => {
+                                const option = document.createElement('option');
+                                option.value = type.id;
+                                option.textContent = type.name;
+                                if (type.id === currentDashboardType) {
+                                    option.selected = true;
+                                }
+                                dashboardTypeSelect.appendChild(option);
+                            });
+                        }
+                    }
+                })
+                .catch(error => console.error('Error fetching types:', error));
+        }
+
+        // Update project name display
+        function updateProjectDisplay(projectId, projectName) {
+            const projectNameSpan = document.getElementById('current-project-name');
+            if (projectNameSpan) {
+                projectNameSpan.textContent = projectName;
+            }
+        }
+
+        // Enhanced project change function with type updates
+        function changeProjectAndUpdateTypes(projectId, projectName) {
+            // Update the display immediately for better UX
+            updateProjectDisplay(projectId, projectName);
+            
+            // Update types for the new project
+            updateTypesForProject(projectId);
+            
+            // Add a small delay before navigation to allow type updates
+            setTimeout(() => {
+                changeProject(projectId);
+            }, 100);
+        }
+
         // Global search functionality
         document.addEventListener('DOMContentLoaded', function() {
             const navSearchForm = document.querySelector('nav form');
@@ -834,51 +1346,25 @@
                 navSearchForm.addEventListener('submit', function() {
                     const searchBtn = this.querySelector('button[type="submit"]');
                     searchBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                    
+                    // Update the hidden project field based on current project selection
+                    const hiddenProjectField = this.querySelector('input[name="project"]');
+                    const currentProject = new URLSearchParams(window.location.search).get('project') || 'default';
+                    if (hiddenProjectField) {
+                        hiddenProjectField.value = currentProject;
+                    }
                 });
-                
-                // Handle dynamic type loading when project changes
-                const projectSelect = navSearchForm.querySelector('select[name="project"]');
-                const typeSelect = navSearchForm.querySelector('select[name="type"]');
-                
-                if (projectSelect && typeSelect) {
-                    projectSelect.addEventListener('change', function() {
-                        const selectedProject = this.value;
-                        const currentType = typeSelect.value;
-                        
-                        // Fetch types for the selected project
-                        const url = new URL(window.location.origin + '/get_project_types');
-                        if (selectedProject) {
-                            url.searchParams.set('project', selectedProject);
-                        }
-                        
-                        fetch(url)
-                            .then(response => response.json())
-                            .then(data => {
-                                // Clear existing options except "All Types"
-                                typeSelect.innerHTML = '<option value="">All Types</option>';
-                                
-                                // Add new options
-                                data.types.forEach(type => {
-                                    const option = document.createElement('option');
-                                    option.value = type.id;
-                                    option.textContent = type.name;
-                                    if (type.id === currentType) {
-                                        option.selected = true;
-                                    }
-                                    typeSelect.appendChild(option);
-                                });
-                            })
-                            .catch(error => {
-                                console.error('Error fetching types:', error);
-                            });
-                    });
-                }
+            }
+            
+            // Initialize types for current project on page load
+            const currentProject = new URLSearchParams(window.location.search).get('project') || 'default';
+            if (currentProject) {
+                updateTypesForProject(currentProject);
             }
         });
         
         // Initialize Bootstrap dropdowns
         document.addEventListener('DOMContentLoaded', function() {
-            // Simple Bootstrap dropdown initialization
             var dropdownElementList = [].slice.call(document.querySelectorAll('.dropdown-toggle'));
             var dropdownList = dropdownElementList.map(function (dropdownToggleEl) {
                 return new bootstrap.Dropdown(dropdownToggleEl);
