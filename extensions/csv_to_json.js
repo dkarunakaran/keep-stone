@@ -9,7 +9,7 @@ const router = express.Router();
 const upload = multer({ dest: '/tmp' });
 
 // Display a simple HTML form for CSV upload
-router.get('/csv-to-json', (req, res) => {
+router.get('/csv_to_json', (req, res) => {
   res.send(`
     <html>
       <head>
@@ -21,7 +21,7 @@ router.get('/csv-to-json', (req, res) => {
       </head>
       <body>
         <h2>CSV to JSON Converter</h2>
-        <form method="POST" action="/extensions/csv-to-json" enctype="multipart/form-data">
+        <form method="POST" action="/extensions/csv_to_json" enctype="multipart/form-data">
           <label for="csvfile">Upload CSV file:</label><br>
           <input type="file" name="csvfile" id="csvfile" accept=".csv" required><br><br>
           <button type="submit">Convert to JSON & Download</button>
@@ -32,7 +32,7 @@ router.get('/csv-to-json', (req, res) => {
 });
 
 // Handle CSV file upload and conversion
-router.post('/csv-to-json', upload.single('csvfile'), async (req, res) => {
+router.post('/csv_to_json', upload.single('csvfile'), async (req, res) => {
   if (!req.file) {
     return res.status(400).send('No file uploaded.');
   }

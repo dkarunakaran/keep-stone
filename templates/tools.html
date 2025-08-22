@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="content-with-sidebar">
+  <div class="main-content-area">
+    <!-- Header Section -->
+    <div class="settings-header mb-4">
+      <div class="d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-3">
+          <div>
+            <h2 class="settings-title mb-2" id="tool-header-title">
+              <i class="fas fa-tools me-3 text-primary"></i>
+              {% if tool_display_name %}{{ tool_display_name }}{% else %}Tool{% endif %}
+            </h2>
+            <p class="settings-subtitle mb-0" id="tool-header-desc">
+              {% if tool_description %}{{ tool_description }}{% else %}Tool utility panel{% endif %}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <iframe id="tool-iframe" src="" style="width:100%;min-height:600px;border:none;border-radius:0.75rem;background:white;box-shadow:0 4px 20px rgba(0,0,0,0.08);display:none;"></iframe>
+  </div>
+</div>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Get the 'url' query parameter
+    function getQueryParam(name) {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get(name);
+    }
+    // Convert tool url to a readable name
+    function toolNameFromUrl(url) {
+      if (!url) return 'Tool';
+      // Extract last part after last slash
+      let name = url.split('/').pop();
+      // Replace underscores and dashes with spaces, capitalize words
+      name = name.replace(/[-_]/g, ' ')
+        .replace(/\b\w/g, c => c.toUpperCase());
+      return name;
+    }
+    const iframe = document.getElementById('tool-iframe');
+    const toolUrl = getQueryParam('url');
+    if (toolUrl) {
+      iframe.src = toolUrl;
+      iframe.style.display = 'block';
+      iframe.scrollIntoView({behavior:'smooth'});
+      // Only set header if not provided by backend
+      {% if not tool_display_name %}
+        const header = document.getElementById('tool-header-title');
+        if (header) header.innerHTML = `<i class=\"fas fa-tools me-3 text-primary\"></i>${toolNameFromUrl(toolUrl)}`;
+      {% endif %}
+      {% if not tool_description %}
+        const desc = document.getElementById('tool-header-desc');
+        if (desc) desc.textContent = '';
+      {% endif %}
+    }
+    // (Optional) Still allow sidebar tool switching without reload
+    const toolLinks = document.querySelectorAll('.tool-item[data-tool-url]');
+    toolLinks.forEach(link => {
+      link.addEventListener('click', function(e) {
+        e.preventDefault();
+        const url = this.getAttribute('data-tool-url');
+        if (url) {
+          window.location.href = `/tools?url=${encodeURIComponent(url)}`;
+        }
+      });
+    });
+  });
+</script>
+{% endblock %}
