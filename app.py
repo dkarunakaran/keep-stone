@@ -174,6 +174,41 @@ def inject_user_stats():
     except Exception:
         return {'user_artifact_count': 0}
 
+@app.context_processor
+def inject_tools_context():
+    """Inject tools context for all pages"""
+    if not current_user.is_authenticated:
+        return {'global_enabled_tools': [], 'current_project_id': None}
+    
+    try:
+        # Get current project context from request args
+        project_filter = request.args.get('project', '')
+        current_project_id = None
+        
+        if project_filter == 'default':
+            current_project_id = get_user_default_project_id()
+        elif project_filter and project_filter != 'all':
+            try:
+                current_project_id = int(project_filter)
+            except (ValueError, TypeError):
+                current_project_id = None
+        
+        # If no project context from URL, try to get user's default project
+        if not current_project_id:
+            current_project_id = get_user_default_project_id()
+        
+        # Get enabled tools for current project
+        enabled_tools = []
+        if current_project_id:
+            enabled_tools = get_enabled_tools(current_project_id)
+        
+        return {
+            'global_enabled_tools': enabled_tools,
+            'current_project_id': current_project_id
+        }
+    except Exception:
+        return {'global_enabled_tools': [], 'current_project_id': None}
+
 # Create markdown renderer
 markdowner = Markdown(extras=["tables", "fenced-code-blocks"])
 

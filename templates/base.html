@@ -1086,6 +1086,119 @@
             color: white;
         }
 
+        /* Tools Sidebar */
+        .tools-sidebar {
+            background: white;
+            border-radius: 0.75rem;
+            box-shadow: var(--card-shadow);
+            border: 1px solid rgb(226 232 240);
+            height: fit-content;
+            position: sticky;
+            top: 1rem;
+        }
+
+        .tools-header {
+            padding: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-radius: 0.75rem 0.75rem 0 0;
+            display: flex;
+            justify-content: between;
+            align-items: center;
+        }
+
+        .tools-header h5 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #334155;
+            margin: 0;
+        }
+
+        .tools-body {
+            padding: 0.5rem;
+        }
+
+        .tool-item {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem;
+            margin-bottom: 0.25rem;
+            border-radius: 0.5rem;
+            color: #334155;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+        }
+
+        .tool-item:hover {
+            background: #f1f5f9;
+            color: var(--primary-color);
+            text-decoration: none;
+            border-color: #e2e8f0;
+            transform: translateX(2px);
+        }
+
+        .tool-item i {
+            color: var(--primary-color);
+            width: 1.25rem;
+            text-align: center;
+            margin-right: 0.75rem;
+        }
+
+        .tool-item h6 {
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin: 0;
+        }
+
+        .tool-item small {
+            font-size: 0.7rem;
+            color: #64748b;
+            margin: 0;
+        }
+
+        /* Main content layout adjustment */
+        .content-with-sidebar {
+            display: flex;
+            gap: 1.5rem;
+            flex-direction: row;
+            align-items: flex-start;
+        }
+
+        .main-content-area {
+            flex: 1;
+            min-width: 0;
+            order: 1;
+        }
+
+        .tools-sidebar-container {
+            width: 280px;
+            flex-shrink: 0;
+            order: 2;
+        }
+
+        /* Responsive design */
+        @media (max-width: 1200px) {
+            .tools-sidebar-container {
+                width: 250px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .content-with-sidebar {
+                flex-direction: column;
+            }
+            
+            .tools-sidebar-container {
+                width: 100%;
+                order: 2;
+            }
+            
+            .main-content-area {
+                order: 1;
+            }
+        }
+
        
     </style>
     {% block head %}{% endblock %}
@@ -1239,7 +1352,57 @@
                 {% endif %}
             {% endwith %}
 
-            {% block content %}{% endblock %}
+            <div class="content-with-sidebar">
+                <!-- Main Content Area -->
+                <div class="main-content-area">
+                    {% block content %}{% endblock %}
+                </div>
+                
+                <!-- Tools Sidebar -->
+                <div class="tools-sidebar-container">
+                    <div class="tools-sidebar">
+                        <div class="tools-header">
+                            <h5>
+                                <i class="fas fa-tools me-2"></i>Tools
+                            </h5>
+                            {% if current_project_id %}
+                                <a href="{{ url_for('project_settings', project_id=current_project_id) }}" 
+                                   class="btn btn-sm btn-light ms-auto" title="Configure Tools">
+                                    <i class="fas fa-cog"></i>
+                                </a>
+                            {% endif %}
+                        </div>
+                        <div class="tools-body">
+                            {% if global_enabled_tools %}
+                                {% for tool in global_enabled_tools %}
+                                <a href="{{ tool.url }}" class="tool-item">
+                                    <i class="{{ tool.icon }}"></i>
+                                    <div>
+                                        <h6>{{ tool.display_name }}</h6>
+                                        <small>{{ tool.description if tool.description else 'Click to open' }}</small>
+                                    </div>
+                                </a>
+                                {% endfor %}
+                            {% else %}
+                                <div class="text-center py-4">
+                                    <div class="text-muted mb-2">
+                                        <i class="fas fa-tools fa-2x"></i>
+                                    </div>
+                                    <small class="text-muted">No tools available</small>
+                                    {% if current_user.is_admin and current_project_id %}
+                                        <div class="mt-2">
+                                            <a href="{{ url_for('project_settings', project_id=current_project_id) }}" 
+                                               class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-plus me-1"></i>Add Tools
+                                            </a>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/js/bootstrap.bundle.min.js"></script>
     <script>
