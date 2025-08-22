@@ -84,16 +84,23 @@ backup:
 tools: 
   project_settings: True
   # json_to_csv: 
-  #   value: False  # Disabled on the project settings page by default
+  #   value: False  # Disabled on the project settings page by default. Always set as False
   #   edit: True   # Editable
   #   display_name: "JSON to CSV"
   #   description: "JSON to CSV conversion"
   #   icon: "fas fa-file-code"
   #   url: "/tools/json_to_csv"
   csv_to_json: 
-    value: False  # Disabled on the project settings page by default
+    value: False  # Disabled on the project settings page by default. Always set as False
     edit: True   # Editable
     display_name: "CSV to JSON"
     description: "CSV to JSON conversion"
     icon: "fas fa-file-csv"
     url: "http://localhost:3333/extensions/csv_to_json" # csv_to_json should be match with above and the nodejs url
+  nedav2_to_echosolv: 
+    value: False  # Disabled on the project settings page by default. Always set as False
+    edit: True   # Editable
+    display_name: "Neda V2 CSV to EchoSolv JSON"
+    description: "Nedav2 CSV to echosolv json conversion"
+    icon: "fas fa-file-csv"
+    url: "http://localhost:3333/extensions/nedav2_to_echosolv" # nedav2_to_echosolv should be match with above and the nodejs url
