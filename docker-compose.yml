@@ -1,13 +1,25 @@
 version: '3.8'
 
 services:
-  keepstone:
-    build: .
+  python-app:
+    build:
+      context: .
+      dockerfile: Dockerfile.python
+    container_name: keepstone-python-app
     ports:
       - "2222:2222"
     volumes:
       - ./:/app
       - ./logs:/var/log/keepstone
-    environment:
-      - PYTHONPATH=/app
+    restart: unless-stopped
+
+  node-app:
+    build:
+      context: .
+      dockerfile: Dockerfile.node
+    container_name: keepstone-node-app
+    ports:
+      - "3333:3333"
+    # volumes:
+    #   - .:/app
     restart: unless-stopped

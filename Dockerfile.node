@@ -1,0 +1,12 @@
+# Dockerfile for Node.js Application
+FROM node:20-slim
+
+WORKDIR /app
+COPY .npmrc /app/
+COPY package.json /app/
+RUN npm install
+COPY . /app
+
+EXPOSE 3333
+
+CMD ["npm", "start", "--", "--port", "3333"]
