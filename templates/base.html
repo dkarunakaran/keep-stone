@@ -1356,8 +1356,9 @@
                 <!-- Main Content Area -->
                 <div class="main-content-area">
                     {% block content %}{% endblock %}
+                    <!-- Tool iframe, hidden by default -->
+                    <iframe id="tool-iframe" src="" style="display:none;width:100%;min-height:600px;border:none;border-radius:0.75rem;margin-top:1.5rem;background:white;box-shadow:0 4px 20px rgba(0,0,0,0.08);" allowfullscreen></iframe>
                 </div>
-                
                 <!-- Tools Sidebar -->
                 <div class="tools-sidebar-container">
                     <div class="tools-sidebar">
@@ -1375,7 +1376,7 @@
                         <div class="tools-body">
                             {% if global_enabled_tools %}
                                 {% for tool in global_enabled_tools %}
-                                <a href="{{ tool.url }}" class="tool-item">
+                                <a href="#" class="tool-item" data-tool-url="{{ tool.url }}">
                                     <i class="{{ tool.icon }}"></i>
                                     <div>
                                         <h6>{{ tool.display_name }}</h6>
@@ -1570,6 +1571,22 @@
             
             console.log('Dropdowns initialized:', dropdownList.length);
         });
+    </script>
+    <script>
+    // Tool sidebar: load tool in iframe
+    document.addEventListener('DOMContentLoaded', function() {
+        const toolLinks = document.querySelectorAll('.tool-item[data-tool-url]');
+        toolLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const url = this.getAttribute('data-tool-url');
+                if (url) {
+                    // Redirect to /tools?url=...
+                    window.location.href = `/tools?url=${encodeURIComponent(url)}`;
+                }
+            });
+        });
+    });
     </script>
     {% block scripts %}{% endblock %}
 </body>

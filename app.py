@@ -2121,6 +2121,37 @@ def tool_csv_to_json():
     
     return render_template('tools/pages/csv_to_json.html')
 
+@app.route('/tools')
+@login_required
+@active_user_required
+def tools():
+    """Tools main page with sidebar and iframe loader"""
+    tool_url = request.args.get('url')
+    tool_display_name = None
+    tool_description = None
+    if tool_url:
+        from models.tool import Tool
+        # Extract tool name from the last part of the URL
+        tool_name = tool_url.rstrip('/').split('/')[-1]
+        tool = session.query(Tool).filter_by(name=tool_name, enabled=True).first()
+        if tool:
+            tool_display_name = tool.display_name
+            tool_description = tool.description
+    return render_template('tools.html', tool_display_name=tool_display_name, tool_description=tool_description)
+
+@app.route('/tools/<tool_name>')
+@login_required
+@active_user_required
+def tool_page(tool_name):
+    """Generic tool loader page: shows sidebar, loads tool iframe for the selected tool."""
+    # Get tool from DB by name
+    from models.tool import Tool
+    tool = session.query(Tool).filter_by(name=tool_name, enabled=True).first()
+    if not tool:
+        flash('Tool not found or not enabled.', 'error')
+        return redirect(url_for('tools'))
+    return render_template('tool_page.html', tool=tool)
+
 # All routes are defined above. The following runs the app if executed directly.
 
 if __name__ == '__main__':
