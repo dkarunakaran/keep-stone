@@ -106,27 +106,35 @@ def initialize_config_table():
         yaml_config = load_config_from_yaml()
         flat_config = flatten_dict(yaml_config)
         
-        # Get existing config keys from database
-        existing_configs = session.query(Config.key).all()
-        existing_keys = {config.key for config in existing_configs}
-        
+        # Get existing config items from database as a dict
+        existing_configs = {config.key: config for config in session.query(Config).all()}
+
         added_count = 0
+        updated_count = 0
         for key, value, is_editable in flat_config:
-            # Only add to database if it's editable and not already exists
-            if is_editable and key not in existing_keys:
-                config_item = Config(
-                    key=key,
-                    value=json.dumps(value) if isinstance(value, (list, dict)) else str(value),
-                    description=generate_config_description(key)
-                )
-                session.add(config_item)
-                added_count += 1
-        
-        if added_count > 0:
+            if is_editable:
+                if key not in existing_configs:
+                    # Add new editable config
+                    config_item = Config(
+                        key=key,
+                        value=json.dumps(value) if isinstance(value, (list, dict)) else str(value),
+                        description=generate_config_description(key)
+                    )
+                    session.add(config_item)
+                    added_count += 1
+                else:
+                    # Update value if different from YAML
+                    db_value = existing_configs[key].value
+                    yaml_value = json.dumps(value) if isinstance(value, (list, dict)) else str(value)
+                    if db_value != yaml_value:
+                        existing_configs[key].value = yaml_value
+                        updated_count += 1
+
+        if added_count > 0 or updated_count > 0:
             session.commit()
-            print(f"Config table updated: added {added_count} new editable config items")
+            print(f"Config table updated: added {added_count} new, updated {updated_count} editable config items")
         else:
-            print("Config table is up to date - no new items to add")
+            print("Config table is up to date - no new or updated items")
         
     except Exception as e:
         session.rollback()
