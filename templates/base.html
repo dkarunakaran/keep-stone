@@ -1360,49 +1360,51 @@
                     <iframe id="tool-iframe" src="" style="display:none;width:100%;min-height:600px;border:none;border-radius:0.75rem;margin-top:1.5rem;background:white;box-shadow:0 4px 20px rgba(0,0,0,0.08);" allowfullscreen></iframe>
                 </div>
                 <!-- Tools Sidebar -->
-                <div class="tools-sidebar-container">
-                    <div class="tools-sidebar">
-                        <div class="tools-header">
-                            <h5>
-                                <i class="fas fa-tools me-2"></i>Tools
-                            </h5>
-                            {% if current_project_id %}
-                                <a href="{{ url_for('project_settings', project_id=current_project_id) }}" 
-                                   class="btn btn-sm btn-light ms-auto" title="Configure Tools">
-                                    <i class="fas fa-cog"></i>
-                                </a>
-                            {% endif %}
-                        </div>
-                        <div class="tools-body">
-                            {% if global_enabled_tools %}
-                                {% for tool in global_enabled_tools %}
-                                <a href="#" class="tool-item" data-tool-url="{{ tool.url }}">
-                                    <i class="{{ tool.icon }}"></i>
-                                    <div>
-                                        <h6>{{ tool.display_name }}</h6>
-                                        <small>{{ tool.description if tool.description else 'Click to open' }}</small>
-                                    </div>
-                                </a>
-                                {% endfor %}
-                            {% else %}
-                                <div class="text-center py-4">
-                                    <div class="text-muted mb-2">
-                                        <i class="fas fa-tools fa-2x"></i>
-                                    </div>
-                                    <small class="text-muted">No tools available</small>
-                                    {% if current_user.is_admin and current_project_id %}
-                                        <div class="mt-2">
-                                            <a href="{{ url_for('project_settings', project_id=current_project_id) }}" 
-                                               class="btn btn-sm btn-outline-primary">
-                                                <i class="fas fa-plus me-1"></i>Add Tools
-                                            </a>
+                    {% if request.endpoint not in config['exclude_display_pages_tools'] %}
+                    <div class="tools-sidebar-container">
+                        <div class="tools-sidebar">
+                            <div class="tools-header">
+                                <h5>
+                                    <i class="fas fa-tools me-2"></i>Tools
+                                </h5>
+                                {% if current_project_id %}
+                                    <a href="{{ url_for('project_settings', project_id=current_project_id) }}" 
+                                       class="btn btn-sm btn-light ms-auto" title="Configure Tools">
+                                        <i class="fas fa-cog"></i>
+                                    </a>
+                                {% endif %}
+                            </div>
+                            <div class="tools-body">
+                                {% if global_enabled_tools %}
+                                    {% for tool in global_enabled_tools %}
+                                    <a href="#" class="tool-item" data-tool-url="{{ tool.url }}">
+                                        <i class="{{ tool.icon }}"></i>
+                                        <div>
+                                            <h6>{{ tool.display_name }}</h6>
+                                            <small>{{ tool.description if tool.description else 'Click to open' }}</small>
                                         </div>
-                                    {% endif %}
-                                </div>
-                            {% endif %}
+                                    </a>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="text-center py-4">
+                                        <div class="text-muted mb-2">
+                                            <i class="fas fa-tools fa-2x"></i>
+                                        </div>
+                                        <small class="text-muted">No tools available</small>
+                                        {% if current_user.is_admin and current_project_id %}
+                                            <div class="mt-2">
+                                                <a href="{{ url_for('project_settings', project_id=current_project_id) }}" 
+                                                   class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-plus me-1"></i>Add Tools
+                                                </a>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
-                </div>
+                    {% endif %}
             </div>
         </div>
     </div>    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/js/bootstrap.bundle.min.js"></script>
