@@ -2,6 +2,7 @@
 *.zip
 backups
 migrate.py
+.npmrc
 
 # Python
 __pycache__/

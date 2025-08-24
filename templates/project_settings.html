@@ -42,7 +42,9 @@
             {% set config_list = [] %}
             {% for section_name, configs in config_items.items() %}
                 {% for config in configs %}
-                    {% set _ = config_list.append(config) %}
+                    {% if not config.key.startswith('tools.') %}
+                        {% set _ = config_list.append(config) %}
+                    {% endif %}
                 {% endfor %}
             {% endfor %}
             
@@ -93,6 +95,60 @@
                     </div>
             </div>
             {% endfor %}
+            
+            <!-- Tools Section -->
+            <div class="setting-card">
+                <div class="setting-header">
+                    <label class="setting-label">
+                        <i class="fas fa-tools me-2 text-success"></i>Project Tools
+                    </label>
+                    <div class="setting-description">
+                        <i class="fas fa-info-circle me-1"></i>Select tools to enable for this project
+                    </div>
+                </div>
+                
+                <div class="setting-input-container">
+                    <div class="tools-grid">
+                        <div class="row g-3">
+                            {% if project_tools %}
+                                {% for tool in project_tools %}
+                                    <div class="col-md-6">
+                                        <div class="form-check tool-checkbox">
+                                            <input class="form-check-input" type="checkbox" 
+                                                   id="tool_{{ tool.name }}" 
+                                                   name="tools[]" 
+                                                   value="{{ tool.name }}"
+                                                   {% if tool.enabled %}checked{% endif %}>
+                                            <label class="form-check-label" for="tool_{{ tool.name }}">
+                                                <div class="tool-item">
+                                                    {% if tool.name == 'json_to_csv' %}
+                                                        <i class="fas fa-file-code text-primary me-2"></i>
+                                                    {% elif tool.name == 'csv_to_json' %}
+                                                        <i class="fas fa-file-csv text-success me-2"></i>
+                                                    {% else %}
+                                                        <i class="fas fa-tools text-secondary me-2"></i>
+                                                    {% endif %}
+                                                    <div>
+                                                        <strong>{{ tool.display_name }}</strong>
+                                                        <small class="text-muted d-block">{{ tool.description }}</small>
+                                                    </div>
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="col-12">
+                                    <div class="text-center text-muted py-4">
+                                        <i class="fas fa-tools fa-2x mb-3"></i>
+                                        <p>No tools available</p>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
         
         <!-- Action Bar -->
@@ -484,6 +540,74 @@
 .setting-card:focus-within {
     transform: translateY(-2px);
     box-shadow: 0 8px 32px rgba(102, 126, 234, 0.15);
+}
+
+/* Tools Section Styling */
+.tools-grid {
+    padding: 0.5rem 0;
+}
+
+.tool-checkbox {
+    margin-bottom: 1rem;
+}
+
+.tool-checkbox .form-check-input {
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-top: 0.125rem;
+    border: 2px solid #d1d5db;
+    border-radius: 0.375rem;
+}
+
+.tool-checkbox .form-check-input:checked {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.tool-checkbox .form-check-label {
+    cursor: pointer;
+    width: 100%;
+    margin-left: 0.5rem;
+}
+
+.tool-item {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    transition: all 0.2s ease;
+    min-height: 4rem;
+}
+
+.tool-item:hover {
+    background: #f1f5f9;
+    border-color: var(--primary-color);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.tool-checkbox .form-check-input:checked + .form-check-label .tool-item {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+    border-color: var(--primary-color);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+.tool-item i {
+    font-size: 1.25rem;
+    min-width: 1.5rem;
+}
+
+.tool-item strong {
+    color: #1f2937;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.tool-item small {
+    font-size: 0.8rem;
+    line-height: 1.2;
 }
 </style>
 {% endblock %}

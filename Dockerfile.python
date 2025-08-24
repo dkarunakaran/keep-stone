@@ -1,0 +1,12 @@
+# Dockerfile for Keepstone Python Application
+FROM python:3.11-slim
+
+WORKDIR /app
+COPY . /app
+
+# Install dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+EXPOSE 2222
+
+CMD ["python", "app.py", "--port", "2222"]
