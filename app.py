@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from datetime import datetime, date
 import os
+import sys
 import utility
 import yaml
 from sqlalchemy.orm import sessionmaker
@@ -14,6 +15,7 @@ from dotenv import load_dotenv
 from utils.config_utils import load_config, update_config, get_config_for_settings, get_section_title, get_section_icon, reset_config_to_defaults
 from utils.auth_utils import admin_required, active_user_required, get_safe_redirect_url, init_default_admin, validate_user_data, check_unique_user_fields, format_user_for_display
 from utils.project_config_utils import get_project_config, initialize_project_configs
+from utils.tool_utils import get_enabled_tools, save_project_tools, initialize_project_tools, get_project_tools_for_settings, initialize_tools_table
 
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage, PageBreak, Table, TableStyle
@@ -23,7 +25,6 @@ from reportlab.lib import colors
 from reportlab.lib.enums import TA_JUSTIFY, TA_CENTER, TA_LEFT
 from reportlab.platypus.flowables import HRFlowable
 import io
-import os
 import re
 from PIL import Image as PILImage
 
@@ -48,6 +49,13 @@ load_dotenv()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY')
+
+# Initialize tools table from config.yaml on startup
+try:
+    initialize_tools_table()
+    print("Tools table synchronized with config.yaml")
+except Exception as e:
+    print(f"Warning: Failed to initialize tools table: {e}")
 
 # Initialize Flask-Login
 login_manager = LoginManager()
@@ -139,9 +147,13 @@ def inject_navigation_context():
     # Get projects for navigation
     nav_projects = get_all_projects()
     
+    # Get default project for the current user
+    default_project = get_user_default_project()
+    
     return {
         'nav_types': nav_types,
-        'nav_projects': nav_projects
+        'nav_projects': nav_projects,
+        'default_project': default_project
     }
 
 @app.context_processor
@@ -161,6 +173,41 @@ def inject_user_stats():
         return {'user_artifact_count': artifact_count}
     except Exception:
         return {'user_artifact_count': 0}
+
+@app.context_processor
+def inject_tools_context():
+    """Inject tools context for all pages"""
+    if not current_user.is_authenticated:
+        return {'global_enabled_tools': [], 'current_project_id': None}
+    
+    try:
+        # Get current project context from request args
+        project_filter = request.args.get('project', '')
+        current_project_id = None
+        
+        if project_filter == 'default':
+            current_project_id = get_user_default_project_id()
+        elif project_filter and project_filter != 'all':
+            try:
+                current_project_id = int(project_filter)
+            except (ValueError, TypeError):
+                current_project_id = None
+        
+        # If no project context from URL, try to get user's default project
+        if not current_project_id:
+            current_project_id = get_user_default_project_id()
+        
+        # Get enabled tools for current project
+        enabled_tools = []
+        if current_project_id:
+            enabled_tools = get_enabled_tools(current_project_id)
+        
+        return {
+            'global_enabled_tools': enabled_tools,
+            'current_project_id': current_project_id
+        }
+    except Exception:
+        return {'global_enabled_tools': [], 'current_project_id': None}
 
 # Create markdown renderer
 markdowner = Markdown(extras=["tables", "fenced-code-blocks"])
@@ -606,6 +653,11 @@ def index():
     projects = get_all_projects()
     default_project = get_user_default_project()
     
+    # Get enabled tools for current project
+    enabled_tools = []
+    if current_project_id:
+        enabled_tools = get_enabled_tools(current_project_id)
+    
     return render_template('index.html', 
                          artifacts=artifacts,
                          type_filter=type_filter if not show_all else '',
@@ -616,7 +668,9 @@ def index():
                          projects=projects,
                          default_project=default_project,
                          config=config,
-                         types_dict=types_dict)
+                         types_dict=types_dict,
+                         current_project_id=current_project_id,
+                         enabled_tools=enabled_tools)
 
 @app.route('/search')
 @login_required
@@ -777,7 +831,7 @@ def add_artifact():
             session.commit()
             
             flash('Artifact created successfully!', 'success')
-            return redirect(url_for('index'))
+            return redirect(url_for('artifact_detail', artifact_id=artifact.id))
             
         except Exception as e:
             # Delete any saved images if artifact creation fails
@@ -949,7 +1003,7 @@ def update_artifact(artifact_id):
             session.commit()
             
             flash('Artifact updated successfully!', 'success')
-            return redirect(url_for('index'))
+            return redirect(url_for('artifact_detail', artifact_id=artifact.id))
             
         except Exception as e:
             print(f"DEBUG: Error updating artifact: {str(e)}")
@@ -1934,10 +1988,15 @@ def project_settings(project_id):
             # Get project-level config keys
             project_keys = get_project_level_config_keys()
             
+            # Handle tools selection
+            selected_tools = request.form.getlist('tools[]')
+            if save_project_tools(project_id, selected_tools):
+                flash(f'Successfully updated tool selection!', 'success')
+            
             # Get all form data
             updates = {}
             for key in request.form:
-                if key in project_keys:
+                if key in project_keys and key != 'tools[]':
                     value = request.form[key]
                     
                     # Convert values to appropriate types
@@ -1968,12 +2027,130 @@ def project_settings(project_id):
     # Initialize project configs if they don't exist
     initialize_project_configs(project_id)
     
+    # Initialize project tools if they don't exist
+    initialize_project_tools(project_id)
+    
     # Get all config items for display
     config_items = get_project_configs_for_settings(project_id)
     
+    # Get tools data for the tools section
+    project_tools = get_project_tools_for_settings(project_id)
+    
     return render_template('project_settings.html', 
                          project=project, 
-                         config_items=config_items)
+                         config_items=config_items,
+                         project_tools=project_tools)
+
+# Tool Routes
+@app.route('/tools/json_to_csv', methods=['GET', 'POST'])
+@login_required
+@active_user_required
+def tool_json_to_csv():
+    """JSON to CSV conversion tool"""
+    if request.method == 'POST':
+        # Handle form submission for JSON to CSV conversion
+        json_input = request.form.get('json_input', '')
+        if json_input:
+            try:
+                import json
+                import csv
+                import io
+                
+                # Parse JSON
+                data = json.loads(json_input)
+                
+                # Convert to CSV
+                output = io.StringIO()
+                if isinstance(data, list) and len(data) > 0:
+                    fieldnames = data[0].keys() if isinstance(data[0], dict) else ['value']
+                    writer = csv.DictWriter(output, fieldnames=fieldnames)
+                    writer.writeheader()
+                    for row in data:
+                        if isinstance(row, dict):
+                            writer.writerow(row)
+                        else:
+                            writer.writerow({'value': row})
+                else:
+                    # Single object
+                    if isinstance(data, dict):
+                        fieldnames = data.keys()
+                        writer = csv.DictWriter(output, fieldnames=fieldnames)
+                        writer.writeheader()
+                        writer.writerow(data)
+                
+                csv_output = output.getvalue()
+                return render_template('tools/pages/json_to_csv.html', 
+                                     json_input=json_input, 
+                                     csv_output=csv_output)
+                
+            except Exception as e:
+                flash(f'Error converting JSON to CSV: {str(e)}', 'error')
+                return render_template('tools/pages/json_to_csv.html', 
+                                     json_input=json_input)
+    
+    return render_template('tools/pages/json_to_csv.html')
+
+@app.route('/tools/csv_to_json', methods=['GET', 'POST'])
+@login_required
+@active_user_required
+def tool_csv_to_json():
+    """CSV to JSON conversion tool"""
+    if request.method == 'POST':
+        # Handle form submission for CSV to JSON conversion
+        csv_input = request.form.get('csv_input', '')
+        if csv_input:
+            try:
+                import csv
+                import json
+                import io
+                
+                # Parse CSV
+                csv_reader = csv.DictReader(io.StringIO(csv_input))
+                data = list(csv_reader)
+                
+                # Convert to JSON
+                json_output = json.dumps(data, indent=2)
+                return render_template('tools/pages/csv_to_json.html', 
+                                     csv_input=csv_input, 
+                                     json_output=json_output)
+                
+            except Exception as e:
+                flash(f'Error converting CSV to JSON: {str(e)}', 'error')
+                return render_template('tools/pages/csv_to_json.html', 
+                                     csv_input=csv_input)
+    
+    return render_template('tools/pages/csv_to_json.html')
+
+@app.route('/tools')
+@login_required
+@active_user_required
+def tools():
+    """Tools main page with sidebar and iframe loader"""
+    tool_url = request.args.get('url')
+    tool_display_name = None
+    tool_description = None
+    if tool_url:
+        from models.tool import Tool
+        # Extract tool name from the last part of the URL
+        tool_name = tool_url.rstrip('/').split('/')[-1]
+        tool = session.query(Tool).filter_by(name=tool_name, enabled=True).first()
+        if tool:
+            tool_display_name = tool.display_name
+            tool_description = tool.description
+    return render_template('tools.html', tool_display_name=tool_display_name, tool_description=tool_description)
+
+@app.route('/tools/<tool_name>')
+@login_required
+@active_user_required
+def tool_page(tool_name):
+    """Generic tool loader page: shows sidebar, loads tool iframe for the selected tool."""
+    # Get tool from DB by name
+    from models.tool import Tool
+    tool = session.query(Tool).filter_by(name=tool_name, enabled=True).first()
+    if not tool:
+        flash('Tool not found or not enabled.', 'error')
+        return redirect(url_for('tools'))
+    return render_template('tool_page.html', tool=tool)
 
 # All routes are defined above. The following runs the app if executed directly.
 

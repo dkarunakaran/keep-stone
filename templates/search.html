@@ -47,6 +47,79 @@
         </div>
     </div>
 
+    <!-- Filter Context -->
+    <div class="setting-card mb-4">
+        <div class="setting-header">
+            <h3 class="setting-label mb-0">
+                <i class="fas fa-filter me-2 text-primary"></i>Current Filters
+            </h3>
+        </div>
+        <div class="setting-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <!-- Search Query Display -->
+                    <div class="d-flex align-items-center">
+                        <label class="form-label me-2 mb-0 fw-medium" style="min-width: 80px;">Search:</label>
+                        <div class="flex-grow-1">
+                            {% if search_query %}
+                                <div class="badge bg-primary px-3 py-2 w-100 text-start">
+                                    <i class="fas fa-search me-1"></i>"{{ search_query }}"
+                                </div>
+                            {% else %}
+                                <div class="badge bg-light text-dark border px-3 py-2 w-100 text-start">
+                                    <i class="fas fa-list me-1"></i>Browsing all artifacts
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-3">
+                    <!-- Type Filter Display -->
+                    <div class="d-flex align-items-center">
+                        <label class="form-label me-2 mb-0 fw-medium" style="min-width: 60px;">Type:</label>
+                        <div class="flex-grow-1">
+                            {% if type_filter %}
+                                <div class="badge bg-secondary px-3 py-2 w-100 text-start">
+                                    <i class="fas fa-tag me-1"></i>{{ types_dict[type_filter|int] }}
+                                </div>
+                            {% else %}
+                                <div class="badge bg-light text-dark border px-3 py-2 w-100 text-start">
+                                    <i class="fas fa-list me-1"></i>All Types
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-3">
+                    <!-- Project Display -->
+                    <div class="d-flex align-items-center">
+                        <label class="form-label me-2 mb-0 fw-medium" style="min-width: 70px;">Project:</label>
+                        <div class="flex-grow-1">
+                            <div class="badge bg-light text-dark border px-3 py-2 w-100 text-start">
+                                <i class="fas fa-folder me-1"></i>
+                                {% if project_filter == 'default' %}
+                                    {{ default_project.name if default_project else 'Personal' }}
+                                {% elif project_filter == 'all' %}
+                                    All Projects
+                                {% elif project_filter %}
+                                    {% for project in projects %}
+                                        {% if project.id|string == project_filter %}
+                                            {{ project.name }}
+                                        {% endif %}
+                                    {% endfor %}
+                                {% else %}
+                                    {% if default_project %}{{ default_project.name }}{% else %}All Projects{% endif %}
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Results Section -->
     <div class="setting-card">
         <div class="setting-header">

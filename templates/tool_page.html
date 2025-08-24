@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row">
+  <div class="col-12 col-lg-3">
+    <div class="tools-sidebar">
+      <div class="tools-header">
+        <h5><i class="fas fa-tools me-2"></i>Tools</h5>
+      </div>
+      <div class="tools-body">
+        {% for t in global_enabled_tools %}
+        <a href="{{ url_for('tool_page', tool_name=t.name) }}" class="tool-item{% if t.name == tool.name %} active{% endif %}">
+          <i class="{{ t.icon }}"></i>
+          <div>
+            <h6>{{ t.display_name }}</h6>
+            <small>{{ t.description }}</small>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-9">
+    <iframe id="tool-iframe" src="{{ tool.url }}" style="width:100%;min-height:600px;border:none;border-radius:0.75rem;background:white;box-shadow:0 4px 20px rgba(0,0,0,0.08);"></iframe>
+  </div>
+</div>
+{% endblock %}

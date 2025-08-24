@@ -476,10 +476,61 @@
     }
     
     // Listen for project changes
-    projectSelect.addEventListener('change', updateInfoBadge);
+    projectSelect.addEventListener('change', function() {
+        updateInfoBadge();
+        updateTypesForProject();
+    });
     
     // Initialize info badge on page load
     updateInfoBadge();
+
+    // Function to update types when project changes
+    function updateTypesForProject() {
+        const typeSelect = document.getElementById('type');
+        const selectedProject = projectSelect.value;
+        const currentType = typeSelect.value;
+        
+        if (!selectedProject) {
+            // Clear types if no project selected
+            typeSelect.innerHTML = '<option value="">Select type</option>';
+            return;
+        }
+        
+        // Fetch types for the selected project
+        const url = new URL(window.location.origin + '/get_project_types');
+        url.searchParams.set('project', selectedProject);
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                // Clear existing options
+                typeSelect.innerHTML = '<option value="">Select type</option>';
+                
+                // Add new options
+                data.types.forEach(type => {
+                    const option = document.createElement('option');
+                    option.value = type.name;
+                    option.textContent = type.name;
+                    typeSelect.appendChild(option);
+                });
+                
+                // If there's only one type, auto-select it
+                if (data.types.length === 1) {
+                    typeSelect.value = data.types[0].name;
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching types:', error);
+                // Fallback to default types if API fails
+                typeSelect.innerHTML = `
+                    <option value="">Select type</option>
+                    <option value="Token">Token</option>
+                    <option value="Troubleshoot">Troubleshoot</option>
+                    <option value="Information">Information</option>
+                    <option value="Other">Other</option>
+                `;
+            });
+    }
 
     // Initialize file handling variables
     const dropzone = document.getElementById('dropzone');

@@ -143,9 +143,9 @@
                 <div class="setting-input-container">
                     <div class="image-gallery" id="current-images">
                         {% for image in artifact.images %}
-                        <div class="image-item" data-image-id="{{ image.id }}">
-                            <img src="{{ url_for('uploaded_file', filename=image.filename) }}" alt="{{ image.filename }}">
-                            <button type="button" class="remove-btn" onclick="removeExistingImage({{ image.id }})">
+                        <div class="image-item" data-image-name="{{ image.name }}">
+                            <img src="{{ url_for('serve_image', filename=image.path.split('/')[-1]) }}" alt="{{ image.name }}">
+                            <button type="button" class="remove-btn" onclick="removeExistingImage('{{ image.name }}')">
                                 <i class="fas fa-times"></i>
                             </button>
                         </div>
@@ -509,9 +509,64 @@
     
     // Listen for project changes
     if (projectSelect) {
-        projectSelect.addEventListener('change', updateInfoBadge);
+        projectSelect.addEventListener('change', function() {
+            updateInfoBadge();
+            updateTypesForProject();
+        });
         // Initialize info badge on page load
         updateInfoBadge();
+    }
+
+    // Function to update types when project changes
+    function updateTypesForProject() {
+        const typeSelect = document.getElementById('type');
+        const selectedProject = projectSelect.value;
+        const currentType = typeSelect.value;
+        
+        if (!selectedProject) {
+            // Clear types if no project selected
+            typeSelect.innerHTML = '<option value="">Select type</option>';
+            return;
+        }
+        
+        // Fetch types for the selected project
+        const url = new URL(window.location.origin + '/get_project_types');
+        url.searchParams.set('project', selectedProject);
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                // Clear existing options
+                typeSelect.innerHTML = '<option value="">Select type</option>';
+                
+                // Add new options
+                data.types.forEach(type => {
+                    const option = document.createElement('option');
+                    option.value = type.name;
+                    option.textContent = type.name;
+                    // Try to preserve the current selection if it exists in new types
+                    if (type.name === currentType) {
+                        option.selected = true;
+                    }
+                    typeSelect.appendChild(option);
+                });
+                
+                // If current type doesn't exist in new project and there's only one type, auto-select it
+                if (data.types.length === 1 && !data.types.some(t => t.name === currentType)) {
+                    typeSelect.value = data.types[0].name;
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching types:', error);
+                // Fallback to default types if API fails
+                typeSelect.innerHTML = `
+                    <option value="">Select type</option>
+                    <option value="Token">Token</option>
+                    <option value="Troubleshoot">Troubleshoot</option>
+                    <option value="Information">Information</option>
+                    <option value="Other">Other</option>
+                `;
+            });
     }
 
     // Initialize file handling variables
@@ -540,17 +595,17 @@
         }
     }
 
-    function removeExistingImage(imageId) {
-        const imageItem = document.querySelector(`[data-image-id="${imageId}"]`);
+    function removeExistingImage(imageName) {
+        const imageItem = document.querySelector(`[data-image-name="${imageName}"]`);
         if (imageItem) {
             imageItem.remove();
-            removedImageIds.push(imageId);
+            removedImageIds.push(imageName);
             
             // Add hidden input for removed image
             const hiddenInput = document.createElement('input');
             hiddenInput.type = 'hidden';
             hiddenInput.name = 'removed_images[]';
-            hiddenInput.value = imageId;
+            hiddenInput.value = imageName;
             removedImagesContainer.appendChild(hiddenInput);
             
             updateImageCount();
