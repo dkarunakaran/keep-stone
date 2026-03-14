@@ -266,10 +266,48 @@ def save_image(file, config):
     # Return relative path for database storage
     return os.path.join(config['storage']['image_path'], unique_name)
 
+def save_file(file, config):
+    """Save any file to disk and return relative path with metadata"""
+    filename = secure_filename(file.filename)
+    unique_name = get_unique_filename(filename)
+    
+    # Create upload directory if it doesn't exist
+    upload_path = os.path.join(os.path.dirname(__file__), config['storage']['image_path'])
+    os.makedirs(upload_path, exist_ok=True)
+    
+    # Save file
+    file_path = os.path.join(upload_path, unique_name)
+    file.save(file_path)
+    
+    # Return metadata for database storage
+    return {
+        'original_name': filename,
+        'unique_name': unique_name,
+        'path': os.path.join(config['storage']['image_path'], unique_name),
+        'size': os.path.getsize(file_path),
+        'content_type': file.content_type
+    }
+
 def delete_image(image_path):
     """Delete image from disk"""
     full_path = os.path.join(os.path.dirname(__file__), image_path)
     if os.path.exists(full_path):
         os.remove(full_path)
+
+def delete_file(file_metadata):
+    """Delete file from disk using metadata"""
+    if isinstance(file_metadata, str):
+        # Legacy behavior: just a path string
+        full_path = os.path.join(os.path.dirname(__file__), file_metadata)
+    elif isinstance(file_metadata, dict):
+        # New behavior: full metadata
+        full_path = os.path.join(os.path.dirname(__file__), file_metadata.get('path', ''))
+    else:
+        return False
+        
+    if os.path.exists(full_path):
+        os.remove(full_path)
+        return True
+    return False
 
 

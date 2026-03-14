@@ -10,7 +10,7 @@ from sqlalchemy.orm import sessionmaker
 import base64
 from werkzeug.utils import secure_filename
 from markdown2 import Markdown
-from utility import save_image, delete_image
+from utility import save_image, delete_image, save_file, delete_file
 from dotenv import load_dotenv
 from utils.config_utils import load_config, update_config, get_config_for_settings, get_section_title, get_section_icon, reset_config_to_defaults
 from utils.auth_utils import admin_required, active_user_required, get_safe_redirect_url, init_default_admin, validate_user_data, check_unique_user_fields, format_user_for_display
@@ -783,9 +783,6 @@ def add_artifact():
             
             for file in files:
                 if file and file.filename:
-                    if not file.content_type.startswith('image/'):
-                        raise ValueError(f"Invalid file type: {file.filename}")
-                    
                     # Check file size if config is available
                     try:
                         if file.content_length and file.content_length > config['storage']['max_file_size']:
@@ -794,12 +791,9 @@ def add_artifact():
                         # If config not available, skip size check
                         pass
                     
-                    # Save image and store metadata
-                    relative_path = save_image(file, config)
-                    images_data.append({
-                        'name': file.filename,
-                        'path': relative_path
-                    })
+                    # Save file and store metadata - now handles any file type
+                    file_metadata = save_file(file, config)
+                    images_data.append(file_metadata)
             
             # Get project assignment (use form value or user's accessible default)
             project_id = request.form.get('project_id')
@@ -834,11 +828,11 @@ def add_artifact():
             return redirect(url_for('artifact_detail', artifact_id=artifact.id))
             
         except Exception as e:
-            # Delete any saved images if artifact creation fails
+            # Delete any saved files if artifact creation fails
             if images_data:  # Check if images_data has content before iterating
-                for image in images_data:
+                for file_metadata in images_data:
                     try:
-                        delete_image(image['path'])
+                        delete_file(file_metadata)
                     except Exception:
                         # Ignore cleanup errors
                         pass
@@ -974,8 +968,10 @@ def update_artifact(artifact_id):
             
             if removed_images_list:
                 for img in artifact.images[:]:
-                    if str(img.get('id', '')) in removed_images_list or img.get('name', '') in removed_images_list:
-                        delete_image(img['path'])
+                    # Handle both old format (dict with 'name' and 'path') and new format (dict with 'original_name' and 'path')
+                    img_name = img.get('name') or img.get('original_name')
+                    if str(img.get('id', '')) in removed_images_list or img_name in removed_images_list:
+                        delete_file(img)
                         artifact.images.remove(img)
 
             # Handle new images
@@ -983,21 +979,15 @@ def update_artifact(artifact_id):
             if files:
                 for file in files:
                     if file and file.filename:
-                        if not file.content_type.startswith('image/'):
-                            raise ValueError(f"Invalid file type: {file.filename}")
-                        
                         # Check file size if content_length is available
                         if hasattr(file, 'content_length') and file.content_length and file.content_length > config['storage']['max_file_size']:
                             raise ValueError(f"File too large: {file.filename}")
                         
-                        # Save new image
-                        relative_path = save_image(file, config)
+                        # Save new file - now handles any file type
+                        file_metadata = save_file(file, config)
                         if not artifact.images:
                             artifact.images = []
-                        artifact.images.append({
-                            'name': file.filename,
-                            'path': relative_path
-                        })
+                        artifact.images.append(file_metadata)
             
             session.add(artifact)
             session.commit()
@@ -1082,6 +1072,56 @@ def artifact_detail(artifact_id):
 @app.route('/static/uploads/<path:filename>')
 def serve_image(filename):
     return send_from_directory(config['storage']['image_path'], filename)
+
+@app.route('/download_file/<int:artifact_id>/<int:file_index>')
+@login_required
+@active_user_required
+def download_file(artifact_id, file_index):
+    """Download a specific file from an artifact"""
+    artifact = session.query(Artifact).filter(Artifact.id==artifact_id).first()
+    if not artifact:
+        flash('Artifact not found!', 'error')
+        return redirect(url_for('index'))
+    
+    # Check if user has access to this artifact's project
+    if not user_has_project_access(artifact.project_id):
+        flash('You do not have access to download files from this artifact.', 'error')
+        return redirect(url_for('index'))
+    
+    # Check if file index is valid
+    if not artifact.images or file_index >= len(artifact.images):
+        flash('File not found!', 'error')
+        return redirect(url_for('artifact_detail', artifact_id=artifact_id))
+    
+    file_metadata = artifact.images[file_index]
+    
+    # Handle both old format (string path) and new format (dict with metadata)
+    if isinstance(file_metadata, str):
+        # Old format - file path string
+        file_path = file_metadata
+        filename = os.path.basename(file_path)
+    else:
+        # New format - full metadata dict
+        file_path = file_metadata.get('path', '')
+        filename = file_metadata.get('original_name', os.path.basename(file_path))
+    
+    # Construct full file system path
+    full_path = os.path.join(os.path.dirname(__file__), file_path)
+    
+    if not os.path.exists(full_path):
+        flash('File not found on server!', 'error')
+        return redirect(url_for('artifact_detail', artifact_id=artifact_id))
+    
+    try:
+        return send_from_directory(
+            os.path.dirname(full_path),
+            os.path.basename(full_path),
+            as_attachment=True,
+            download_name=filename
+        )
+    except Exception as e:
+        flash(f'Error downloading file: {str(e)}', 'error')
+        return redirect(url_for('artifact_detail', artifact_id=artifact_id))
 
 def clean_markdown_for_pdf(text):
     """Convert markdown to PDF-friendly text with basic formatting"""

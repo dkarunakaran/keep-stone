@@ -54,7 +54,7 @@ storage:
     value: "static/uploads"  # Relative to app root
     edit: False  # Not editable - system path
   allowed_extensions: 
-    value: ["jpg", "jpeg", "png", "gif"]
+    value: ["jpg", "jpeg", "png", "gif", "pdf", "doc", "docx", "xls", "xlsx", "txt", "zip", "mp4", "mp3", "csv"]
     edit: True   # Editable
   max_file_size: 
     value: 5242880  # 5MB in bytes

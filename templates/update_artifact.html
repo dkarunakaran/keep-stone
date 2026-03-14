@@ -128,24 +128,30 @@
                 </div>
             </div>
 
-            <!-- Current Images Card -->
+            <!-- Current Files Card -->
             {% if artifact.images %}
             <div class="setting-card">
                 <div class="setting-header">
                     <label class="setting-label">
-                        <i class="fas fa-images me-2"></i>Current Images
+                        <i class="fas fa-paperclip me-2"></i>Current Files
                     </label>
                     <div class="setting-description">
-                        <i class="fas fa-info-circle me-1"></i>Existing images attached to this artifact
+                        <i class="fas fa-info-circle me-1"></i>Existing files attached to this artifact
                     </div>
                 </div>
                 
                 <div class="setting-input-container">
-                    <div class="image-gallery" id="current-images">
-                        {% for image in artifact.images %}
-                        <div class="image-item" data-image-name="{{ image.name }}">
-                            <img src="{{ url_for('serve_image', filename=image.path.split('/')[-1]) }}" alt="{{ image.name }}">
-                            <button type="button" class="remove-btn" onclick="removeExistingImage('{{ image.name }}')">
+                    <div class="file-gallery" id="current-files">
+                        {% for file in artifact.images %}
+                        <div class="file-item" data-file-name="{{ file.original_name or file.name }}">
+                            <div class="file-preview">
+                                <i class="fas fa-file fa-3x text-muted"></i>
+                            </div>
+                            <div class="file-info">
+                                <div class="file-name">{{ file.original_name or file.name }}</div>
+                                <div class="file-size">{{ (file.size / 1024)|round(1) if file.size else '0' }} KB</div>
+                            </div>
+                            <button type="button" class="remove-btn" onclick="removeExistingFile('{{ file.original_name or file.name }}')">
                                 <i class="fas fa-times"></i>
                             </button>
                         </div>
@@ -155,25 +161,25 @@
             </div>
             {% endif %}
 
-            <!-- Add New Images Card -->
+            <!-- Add New Files Card -->
             <div class="setting-card">
                 <div class="setting-header">
                     <label class="setting-label">
-                        <i class="fas fa-plus me-2"></i>Add New Images
+                        <i class="fas fa-plus me-2"></i>Add New Files
                     </label>
                     <div class="setting-description">
-                        <i class="fas fa-info-circle me-1"></i>Upload additional images for this artifact (max 10 total)
+                        <i class="fas fa-info-circle me-1"></i>Upload additional files for this artifact (max 10 total)
                     </div>
                 </div>
                 
                 <div class="setting-input-container">
-                    <div class="image-gallery" id="new-image-gallery"></div>
+                    <div class="file-gallery" id="new-file-gallery"></div>
                     
                     <div class="dropzone" id="dropzone">
                         <i class="fas fa-cloud-upload-alt fa-2x mb-2 text-muted"></i>
-                        <p class="mb-2">Drop new images here or click to browse</p>
-                        <span class="image-count" id="image-count">0 / 10 total images</span>
-                        <input type="file" id="images" name="images" multiple accept="image/*" style="display: none;">
+                        <p class="mb-2">Drop new files here or click to browse</p>
+                        <span class="file-count" id="file-count">0 / 10 total files</span>
+                        <input type="file" id="files" name="images" multiple style="display: none;">
                     </div>
                 </div>
             </div>
@@ -200,8 +206,8 @@
             </div>
         </div>
 
-        <!-- Hidden inputs for removed images -->
-        <div id="removed-images"></div>
+        <!-- Hidden inputs for removed files -->
+        <div id="removed-files"></div>
     </form>
 </div>
 <style>
@@ -309,34 +315,57 @@
     outline: none;
 }
 
-/* Image Gallery */
-.image-gallery {
+/* File Gallery */
+.file-gallery {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 1rem;
     margin-bottom: 1.5rem;
 }
 
-.image-item {
+.file-item {
     position: relative;
-    aspect-ratio: 16/9;
     border-radius: 0.75rem;
     overflow: hidden;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     transition: transform 0.2s ease;
+    background: white;
+    border: 1px solid #e5e7eb;
 }
 
-.image-item:hover {
+.file-item:hover {
     transform: translateY(-2px);
 }
 
-.image-item img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+.file-preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 120px;
+    background: #f8fafc;
 }
 
-.image-item .remove-btn {
+.file-info {
+    padding: 0.75rem;
+    text-align: center;
+}
+
+.file-name {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #1f2937;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-bottom: 0.25rem;
+}
+
+.file-size {
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.file-item .remove-btn {
     position: absolute;
     top: 0.5rem;
     right: 0.5rem;
@@ -351,7 +380,7 @@
     cursor: pointer;
 }
 
-.image-item:hover .remove-btn {
+.file-item:hover .remove-btn {
     opacity: 1;
 }
 
@@ -376,7 +405,7 @@
     pointer-events: none;
 }
 
-.image-count {
+.file-count {
     display: block;
     margin-top: 0.5rem;
     color: #6b7280;
@@ -467,7 +496,7 @@
         width: 100%;
     }
     
-    .image-gallery {
+    .file-gallery {
         grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     }
 }
@@ -571,22 +600,22 @@
 
     // Initialize file handling variables
     const dropzone = document.getElementById('dropzone');
-    const imageInput = document.getElementById('images');
-    const newImageGallery = document.getElementById('new-image-gallery');
-    const imageCount = document.getElementById('image-count');
-    const removedImagesContainer = document.getElementById('removed-images');
+    const fileInput = document.getElementById('files');
+    const newFileGallery = document.getElementById('new-file-gallery');
+    const fileCount = document.getElementById('file-count');
+    const removedFilesContainer = document.getElementById('removed-files');
     const maxFiles = 10;
     const maxFileSize = 5 * 1024 * 1024; // 5MB
 
     // Store files in a Map to maintain file objects
     const fileMap = new Map();
-    let removedImageIds = [];
+    let removedFileIds = [];
 
-    function updateImageCount() {
-        const currentImages = document.querySelectorAll('#current-images .image-item').length;
-        const newImages = newImageGallery.children.length;
-        const totalCount = currentImages + newImages;
-        imageCount.textContent = `${totalCount} / ${maxFiles} total images`;
+    function updateFileCount() {
+        const currentFiles = document.querySelectorAll('#current-files .file-item').length;
+        const newFiles = newFileGallery.children.length;
+        const totalCount = currentFiles + newFiles;
+        fileCount.textContent = `${totalCount} / ${maxFiles} total files`;
         
         if (totalCount >= maxFiles) {
             dropzone.classList.add('disabled');
@@ -595,26 +624,26 @@
         }
     }
 
-    function removeExistingImage(imageName) {
-        const imageItem = document.querySelector(`[data-image-name="${imageName}"]`);
-        if (imageItem) {
-            imageItem.remove();
-            removedImageIds.push(imageName);
+    function removeExistingFile(fileName) {
+        const fileItem = document.querySelector(`[data-file-name="${fileName}"]`);
+        if (fileItem) {
+            fileItem.remove();
+            removedFileIds.push(fileName);
             
-            // Add hidden input for removed image
+            // Add hidden input for removed file
             const hiddenInput = document.createElement('input');
             hiddenInput.type = 'hidden';
             hiddenInput.name = 'removed_images[]';
-            hiddenInput.value = imageName;
-            removedImagesContainer.appendChild(hiddenInput);
+            hiddenInput.value = fileName;
+            removedFilesContainer.appendChild(hiddenInput);
             
-            updateImageCount();
+            updateFileCount();
         }
     }
 
-    function updateImageInput() {
+    function updateFileInput() {
         const dt = new DataTransfer();
-        const previews = newImageGallery.querySelectorAll('.image-item');
+        const previews = newFileGallery.querySelectorAll('.file-item');
         
         // Add files that have previews to DataTransfer
         previews.forEach(preview => {
@@ -626,16 +655,16 @@
         });
 
         // Update the file input
-        imageInput.files = dt.files;
+        fileInput.files = dt.files;
     }
 
     function handleFiles(files) {
-        const currentTotal = document.querySelectorAll('.image-item').length;
+        const currentTotal = document.querySelectorAll('.file-item').length;
         const remainingSlots = Math.max(0, maxFiles - currentTotal);
         const filesToProcess = Array.from(files).slice(0, remainingSlots);
         
         if (files.length > remainingSlots) {
-            alert(`You can only upload ${remainingSlots} more image${remainingSlots === 1 ? '' : 's'}`);
+            alert(`You can only upload ${remainingSlots} more file${remainingSlots === 1 ? '' : 's'}`);
         }
 
         filesToProcess.forEach(file => {
@@ -649,10 +678,6 @@
                 return;
             }
 
-            if (!file.type.startsWith('image/')) {
-                alert(`File ${file.name} is not an image`);
-                return;
-            }
 
             // Store file in Map
             fileMap.set(file.name, file);
@@ -660,10 +685,41 @@
             const reader = new FileReader();
             reader.onload = (e) => {
                 const div = document.createElement('div');
-                div.className = 'image-item';
+                div.className = 'file-item';
                 div.dataset.filename = file.name;
+                
+                // Create file icon based on type
+                let fileIcon = 'fa-file';
+                if (file.type.startsWith('image/')) {
+                    fileIcon = 'fa-file-image';
+                } else if (file.type.startsWith('video/')) {
+                    fileIcon = 'fa-file-video';
+                } else if (file.type.startsWith('audio/')) {
+                    fileIcon = 'fa-file-audio';
+                } else if (file.type.includes('pdf')) {
+                    fileIcon = 'fa-file-pdf';
+                } else if (file.type.includes('word') || file.type.includes('document')) {
+                    fileIcon = 'fa-file-word';
+                } else if (file.type.includes('excel') || file.type.includes('spreadsheet')) {
+                    fileIcon = 'fa-file-excel';
+                } else if (file.type.includes('powerpoint') || file.type.includes('presentation')) {
+                    fileIcon = 'fa-file-powerpoint';
+                } else if (file.type.includes('zip') || file.type.includes('rar') || file.type.includes('archive')) {
+                    fileIcon = 'fa-file-archive';
+                } else if (file.type.includes('text')) {
+                    fileIcon = 'fa-file-alt';
+                } else if (file.type.includes('code')) {
+                    fileIcon = 'fa-file-code';
+                }
+                
                 div.innerHTML = `
-                    <img src="${e.target.result}" alt="${file.name}">
+                    <div class="file-preview">
+                        <i class="fas ${fileIcon} fa-3x text-muted"></i>
+                    </div>
+                    <div class="file-info">
+                        <div class="file-name">${file.name}</div>
+                        <div class="file-size">${(file.size / 1024).toFixed(1)} KB</div>
+                    </div>
                     <button type="button" class="remove-btn">
                         <i class="fas fa-times"></i>
                     </button>
@@ -672,13 +728,13 @@
                 div.querySelector('.remove-btn').onclick = () => {
                     div.remove();
                     fileMap.delete(file.name);
-                    updateImageInput();
-                    updateImageCount();
+                    updateFileInput();
+                    updateFileCount();
                 };
 
-                newImageGallery.appendChild(div);
-                updateImageCount();
-                updateImageInput();
+                newFileGallery.appendChild(div);
+                updateFileCount();
+                updateFileInput();
             };
             reader.readAsDataURL(file);
         });
@@ -687,11 +743,11 @@
     // Drag and drop handling
     dropzone.onclick = () => {
         if (!dropzone.classList.contains('disabled')) {
-            imageInput.click();
+            fileInput.click();
         }
     };
     
-    imageInput.onchange = (e) => {
+    fileInput.onchange = (e) => {
         handleFiles(e.target.files);
     };
 
@@ -724,10 +780,10 @@
         }
     });
 
-    // Make removeExistingImage available globally
-    window.removeExistingImage = removeExistingImage;
+    // Make removeExistingFile available globally
+    window.removeExistingFile = removeExistingFile;
 
-    // Initialize image count
-    updateImageCount();
+    // Initialize file count
+    updateFileCount();
 </script>
 {% endblock %}

@@ -112,6 +112,36 @@
         border-top: 1px solid #f3f4f6;
     }
 
+    .file-preview {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        aspect-ratio: 16/9;
+        padding: 1rem;
+        background: #f9fafb;
+    }
+
+    .image-actions {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        z-index: 10;
+    }
+
+    .file-preview .file-name {
+        font-size: 0.75rem;
+        color: #6b7280;
+        text-align: center;
+        padding: 0.25rem;
+        border: none;
+    }
+
+    .file-preview .file-size {
+        font-size: 0.7rem;
+        color: #9ca3af;
+    }
+
     .markdown-content {
         font-family: 'Georgia', serif;
         font-size: 1.2rem;
@@ -312,20 +342,41 @@
     {% if artifact.images %}
     <div class="image-section">
         <h5 class="text-muted mb-3">
-            <i class="fas fa-images me-2"></i>Attached Images
+            <i class="fas fa-file me-2"></i>Attached Files
         </h5>
         <div class="image-gallery">
-            {% for image in artifact.images %}
+            {% for file in artifact.images %}
             <div class="image-card">
-                <a href="{{ url_for('static', filename=image.path.replace('static/', '')) }}"
+                {% set file_name = file.original_name if file.original_name is defined else file.name %}
+                {% set file_ext = file_name.split('.')[-1].lower() if file_name else '' %}
+                {% set is_image = file_ext in ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'] %}
+                
+                {% if is_image %}
+                <a href="{{ url_for('static', filename=file.path.replace('static/', '')) }}"
                 data-fancybox="gallery"
-                data-caption="Figure {{ loop.index }}: {{ image.name }}">
-                    <img src="{{ url_for('static', filename=image.path.replace('static/', '')) }}" 
-                        alt="Figure {{ loop.index }}: {{ image.name }}"
+                data-caption="File {{ loop.index }}: {{ file_name }}">
+                    <img src="{{ url_for('static', filename=file.path.replace('static/', '')) }}" 
+                        alt="File {{ loop.index }}: {{ file_name }}"
                         loading="lazy">
                 </a>
-                <div class="image-name text-truncate" title="Figure {{ loop.index }}: {{ image.name }}">
-                    <strong>Figure {{ loop.index }}:</strong> {{ image.name }}
+                {% else %}
+                <div class="file-preview">
+                    <i class="fas fa-file-alt fa-3x text-muted mb-2"></i>
+                    <p class="file-name text-truncate" title="{{ file_name }}">{{ file_name }}</p>
+                    {% if file.size is defined %}
+                    <p class="file-size text-muted small">{{ (file.size / 1024)|round(1) }} KB</p>
+                    {% endif %}
+                </div>
+                {% endif %}
+                
+                <div class="image-actions">
+                    <a href="{{ url_for('download_file', artifact_id=artifact.id, file_index=loop.index-1) }}" 
+                       class="btn btn-sm btn-primary" title="Download {{ file_name }}">
+                        <i class="fas fa-download me-1"></i>Download
+                    </a>
+                </div>
+                <div class="file-name text-truncate" title="File {{ loop.index }}: {{ file_name }}">
+                    <strong>File {{ loop.index }}:</strong> {{ file_name }}
                 </div>
             </div>
             {% endfor %}

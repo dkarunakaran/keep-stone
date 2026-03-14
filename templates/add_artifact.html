@@ -125,25 +125,25 @@
                 </div>
             </div>
 
-            <!-- Images Card -->
+            <!-- Files Card -->
             <div class="setting-card">
                 <div class="setting-header">
                     <label class="setting-label">
-                        <i class="fas fa-images me-2"></i>Artifact Images
+                        <i class="fas fa-paperclip me-2"></i>Artifact Files
                     </label>
                     <div class="setting-description">
-                        <i class="fas fa-info-circle me-1"></i>Upload images related to this artifact (max 10)
+                        <i class="fas fa-info-circle me-1"></i>Upload files related to this artifact (max 10)
                     </div>
                 </div>
                 
                 <div class="setting-input-container">
-                    <div class="image-gallery" id="image-gallery"></div>
+                    <div class="file-gallery" id="file-gallery"></div>
                     
                     <div class="dropzone" id="dropzone">
                         <i class="fas fa-cloud-upload-alt fa-2x mb-2 text-muted"></i>
-                        <p class="mb-2">Drop images here or click to browse</p>
-                        <span class="image-count" id="image-count">0 / 10 images</span>
-                        <input type="file" id="images" name="images" multiple accept="image/*" style="display: none;">
+                        <p class="mb-2">Drop files here or click to browse</p>
+                        <span class="file-count" id="file-count">0 / 10 files</span>
+                        <input type="file" id="files" name="images" multiple style="display: none;">
                     </div>
                 </div>
             </div>
@@ -277,34 +277,57 @@
     outline: none;
 }
 
-/* Image Gallery */
-.image-gallery {
+/* File Gallery */
+.file-gallery {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 1rem;
     margin-bottom: 1.5rem;
 }
 
-.image-item {
+.file-item {
     position: relative;
-    aspect-ratio: 16/9;
     border-radius: 0.75rem;
     overflow: hidden;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     transition: transform 0.2s ease;
+    background: white;
+    border: 1px solid #e5e7eb;
 }
 
-.image-item:hover {
+.file-item:hover {
     transform: translateY(-2px);
 }
 
-.image-item img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+.file-preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 120px;
+    background: #f8fafc;
 }
 
-.image-item .remove-btn {
+.file-info {
+    padding: 0.75rem;
+    text-align: center;
+}
+
+.file-name {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #1f2937;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-bottom: 0.25rem;
+}
+
+.file-size {
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.file-item .remove-btn {
     position: absolute;
     top: 0.5rem;
     right: 0.5rem;
@@ -319,7 +342,7 @@
     cursor: pointer;
 }
 
-.image-item:hover .remove-btn {
+.file-item:hover .remove-btn {
     opacity: 1;
 }
 
@@ -344,7 +367,7 @@
     pointer-events: none;
 }
 
-.image-count {
+.file-count {
     display: block;
     margin-top: 0.5rem;
     color: #6b7280;
@@ -435,7 +458,7 @@
         width: 100%;
     }
     
-    .image-gallery {
+    .file-gallery {
         grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     }
 }
@@ -534,18 +557,18 @@
 
     // Initialize file handling variables
     const dropzone = document.getElementById('dropzone');
-    const imageInput = document.getElementById('images');
-    const imageGallery = document.getElementById('image-gallery');
-    const imageCount = document.getElementById('image-count');
+    const fileInput = document.getElementById('files');
+    const fileGallery = document.getElementById('file-gallery');
+    const fileCount = document.getElementById('file-count');
     const maxFiles = 10;
     const maxFileSize = 5 * 1024 * 1024; // 5MB
 
     // Store files in a Map to maintain file objects
     const fileMap = new Map();
 
-    function updateImageCount() {
-        const currentCount = imageGallery.children.length;
-        imageCount.textContent = `${currentCount} / ${maxFiles} images`;
+    function updateFileCount() {
+        const currentCount = fileGallery.children.length;
+        fileCount.textContent = `${currentCount} / ${maxFiles} files`;
         
         if (currentCount >= maxFiles) {
             dropzone.classList.add('disabled');
@@ -554,9 +577,9 @@
         }
     }
 
-    function updateImageInput() {
+    function updateFileInput() {
         const dt = new DataTransfer();
-        const previews = imageGallery.querySelectorAll('.image-item');
+        const previews = fileGallery.querySelectorAll('.file-item');
         
         // Add files that have previews to DataTransfer
         previews.forEach(preview => {
@@ -568,7 +591,7 @@
         });
 
         // Update the file input
-        imageInput.files = dt.files;
+        fileInput.files = dt.files;
     }
 
     function handleFiles(files) {
@@ -590,10 +613,6 @@
                 return;
             }
 
-            if (!file.type.startsWith('image/')) {
-                alert(`File ${file.name} is not an image`);
-                return;
-            }
 
             // Store file in Map
             fileMap.set(file.name, file);
@@ -601,10 +620,41 @@
             const reader = new FileReader();
             reader.onload = (e) => {
                 const div = document.createElement('div');
-                div.className = 'image-item';
+                div.className = 'file-item';
                 div.dataset.filename = file.name;
+                
+                // Create file icon based on type
+                let fileIcon = 'fa-file';
+                if (file.type.startsWith('image/')) {
+                    fileIcon = 'fa-file-image';
+                } else if (file.type.startsWith('video/')) {
+                    fileIcon = 'fa-file-video';
+                } else if (file.type.startsWith('audio/')) {
+                    fileIcon = 'fa-file-audio';
+                } else if (file.type.includes('pdf')) {
+                    fileIcon = 'fa-file-pdf';
+                } else if (file.type.includes('word') || file.type.includes('document')) {
+                    fileIcon = 'fa-file-word';
+                } else if (file.type.includes('excel') || file.type.includes('spreadsheet')) {
+                    fileIcon = 'fa-file-excel';
+                } else if (file.type.includes('powerpoint') || file.type.includes('presentation')) {
+                    fileIcon = 'fa-file-powerpoint';
+                } else if (file.type.includes('zip') || file.type.includes('rar') || file.type.includes('archive')) {
+                    fileIcon = 'fa-file-archive';
+                } else if (file.type.includes('text')) {
+                    fileIcon = 'fa-file-alt';
+                } else if (file.type.includes('code')) {
+                    fileIcon = 'fa-file-code';
+                }
+                
                 div.innerHTML = `
-                    <img src="${e.target.result}" alt="${file.name}">
+                    <div class="file-preview">
+                        <i class="fas ${fileIcon} fa-3x text-muted"></i>
+                    </div>
+                    <div class="file-info">
+                        <div class="file-name">${file.name}</div>
+                        <div class="file-size">${(file.size / 1024).toFixed(1)} KB</div>
+                    </div>
                     <button type="button" class="remove-btn">
                         <i class="fas fa-times"></i>
                     </button>
@@ -613,13 +663,13 @@
                 div.querySelector('.remove-btn').onclick = () => {
                     div.remove();
                     fileMap.delete(file.name);
-                    updateImageInput();
-                    updateImageCount();
+                    updateFileInput();
+                    updateFileCount();
                 };
 
-                imageGallery.appendChild(div);
-                updateImageCount();
-                updateImageInput();
+                fileGallery.appendChild(div);
+                updateFileCount();
+                updateFileInput();
             };
             reader.readAsDataURL(file);
         });
@@ -628,11 +678,11 @@
     // Drag and drop handling
     dropzone.onclick = () => {
         if (!dropzone.classList.contains('disabled')) {
-            imageInput.click();
+            fileInput.click();
         }
     };
     
-    imageInput.onchange = (e) => {
+    fileInput.onchange = (e) => {
         handleFiles(e.target.files);
     };
 
@@ -665,7 +715,7 @@
         }
     });
 
-    // Initialize image count
-    updateImageCount();
+    // Initialize file count
+    updateFileCount();
 </script>
 {% endblock %}
