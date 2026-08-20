@@ -8,8 +8,9 @@ from .artifact import Artifact
 from .type import Type
 from .config import Config
 from .tool import Tool
+from .api_key import ApiKey
 
 __all__ = [
-    'Base', 'User', 'Project', 'ProjectMember', 'ProjectConfig', 
-    'Artifact', 'Type', 'Config', 'Tool'
+    'Base', 'User', 'Project', 'ProjectMember', 'ProjectConfig',
+    'Artifact', 'Type', 'Config', 'Tool', 'ApiKey'
 ]

@@ -1326,6 +1326,11 @@
                             </a>
                         </li>
                         {% endif %}
+                        <li>
+                            <a class="dropdown-item" href="{{ url_for('api_keys') }}">
+                                <i class="fas fa-key me-2"></i>API Keys
+                            </a>
+                        </li>
                         <li><hr class="dropdown-divider"></li>
                         <li>
                             <a class="dropdown-item text-danger" href="{{ url_for('logout') }}">
@@ -1591,5 +1596,6 @@
     });
     </script>
     {% block scripts %}{% endblock %}
+    {% block modals %}{% endblock %}
 </body>
 </html>

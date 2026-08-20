@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, make_response, abort, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, make_response, abort, send_from_directory, session as flask_session, session as flask_session
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from datetime import datetime, date
@@ -44,6 +44,7 @@ import models.project
 import models.project_member
 import models.project_config
 import models.user
+import models.api_key
 
 load_dotenv()
 
@@ -64,13 +65,18 @@ login_manager.login_view = 'login'
 login_manager.login_message = 'Please log in to access this page.'
 login_manager.login_message_category = 'info'
 
+# Register REST API blueprint
+from api import api_bp
+app.register_blueprint(api_bp)
+
 @login_manager.user_loader
 def load_user(user_id):
     """Load user for Flask-Login"""
     return session.query(User).get(int(user_id))
 
 # Create instance directory if it doesn't exist
-instance_path = '/app/instance'
+# Support both Docker (/app) and local development
+instance_path = '/app/instance' if os.path.exists('/app') else os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance')
 os.makedirs(instance_path, exist_ok=True)
 
 # Declare config as global at module level
@@ -2191,6 +2197,110 @@ def tool_page(tool_name):
         flash('Tool not found or not enabled.', 'error')
         return redirect(url_for('tools'))
     return render_template('tool_page.html', tool=tool)
+
+# ============ API Key Management Routes ============
+
+@app.route('/api-keys')
+@login_required
+@active_user_required
+def api_keys():
+    """API Keys management page"""
+    from models.api_key import ApiKey
+
+    # Get user's API keys
+    user_keys = session.query(ApiKey).filter_by(user_id=current_user.id).order_by(ApiKey.created_at.desc()).all()
+
+    # Check if there's a newly created key to show
+    new_key = flask_session.pop('new_api_key', None)
+    new_key_name = flask_session.pop('new_api_key_name', None)
+
+    return render_template('api_keys.html', api_keys=user_keys, new_key=new_key, new_key_name=new_key_name, now=datetime.utcnow())
+
+
+@app.route('/api-keys/create', methods=['POST'])
+@login_required
+@active_user_required
+def create_api_key():
+    """Create a new API key"""
+    from models.api_key import ApiKey
+
+    name = request.form.get('name', '').strip()
+    permissions = request.form.get('permissions', 'read')
+    expires_days = request.form.get('expires_days', type=int)
+
+    if not name:
+        flash('API key name is required.', 'error')
+        return redirect(url_for('api_keys'))
+
+    # Validate permissions
+    if permissions not in ['read', 'write', 'admin']:
+        permissions = 'read'
+
+    # Calculate expiry date if specified
+    expires_at = None
+    if expires_days and expires_days > 0:
+        from datetime import timedelta
+        expires_at = datetime.utcnow() + timedelta(days=expires_days)
+
+    # Create the key
+    api_key, raw_key = ApiKey.create(
+        user_id=current_user.id,
+        name=name,
+        permissions=permissions,
+        expires_at=expires_at
+    )
+    session.add(api_key)
+    session.commit()
+
+    # Store raw key in session to show once
+    flask_session['new_api_key'] = raw_key
+    flask_session['new_api_key_name'] = name
+
+    flash(f'API key "{name}" created successfully!', 'success')
+
+    return redirect(url_for('api_keys'))
+
+
+@app.route('/api-keys/<int:key_id>/revoke', methods=['POST'])
+@login_required
+@active_user_required
+def revoke_api_key(key_id):
+    """Revoke an API key"""
+    from models.api_key import ApiKey
+
+    api_key = session.query(ApiKey).filter_by(id=key_id, user_id=current_user.id).first()
+
+    if not api_key:
+        flash('API key not found.', 'error')
+        return redirect(url_for('api_keys'))
+
+    api_key.is_active = False
+    session.commit()
+
+    flash(f'API key "{api_key.name}" has been revoked.', 'success')
+    return redirect(url_for('api_keys'))
+
+
+@app.route('/api-keys/<int:key_id>/delete', methods=['POST'])
+@login_required
+@active_user_required
+def delete_api_key(key_id):
+    """Permanently delete an API key"""
+    from models.api_key import ApiKey
+
+    api_key = session.query(ApiKey).filter_by(id=key_id, user_id=current_user.id).first()
+
+    if not api_key:
+        flash('API key not found.', 'error')
+        return redirect(url_for('api_keys'))
+
+    key_name = api_key.name
+    session.delete(api_key)
+    session.commit()
+
+    flash(f'API key "{key_name}" has been permanently deleted.', 'success')
+    return redirect(url_for('api_keys'))
+
 
 # All routes are defined above. The following runs the app if executed directly.
 
